@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Âm Việt Nam 2025</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white py-4 shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                        <span class="text-2xl">📅</span>
+                    </div>
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold">Lịch Âm Việt Nam</h1>
+                        <p class="text-emerald-100 text-sm">Lịch Vạn Niên - Xem ngày tốt xấu</p>
+                    </div>
+                </div>
+                <button onclick="goToToday()" class="today-btn bg-white text-emerald-600 px-4 py-2 rounded-lg font-semibold hover:bg-emerald-50 flex items-center gap-2">
+                    <span>📍</span>
+                    <span class="hidden sm:inline">HÔM NAY</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-6 max-w-6xl">
+        <!-- PHẦN 1: LỊCH NGÀY -->
+        <section id="day-calendar" class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- Cột trái: Dương lịch -->
+                <div class="flex-1 text-center lg:border-r lg:pr-6 border-gray-200">
+                    <div class="flex items-center justify-center gap-4 mb-4">
+                        <button onclick="changeDay(-1)" class="nav-btn w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                            </svg>
+                        </button>
+                        <div>
+                            <div id="solar-day" class="text-7xl md:text-8xl font-bold text-emerald-600">01</div>
+                            <div id="solar-weekday" class="text-xl text-gray-600 font-medium">Thứ Hai</div>
+                        </div>
+                        <button onclick="changeDay(1)" class="nav-btn w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="solar-month-year" class="text-lg text-gray-500 mb-4">Tháng 12 năm 2025</div>
+                    
+                    <!-- Thời tiết (Placeholder) -->
+                    <div class="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
+                        <span class="text-2xl" id="weather-icon">☀️</span>
+                        <span class="text-blue-600 font-medium" id="weather-text">Hà Nội - 25°C</span>
+                    </div>
+                    
+                    <!-- Ngày lễ -->
+                    <div id="holiday-info" class="mt-4 hidden">
+                        <span class="inline-block bg-red-500 text-white px-4 py-1 rounded-full text-sm font-medium holiday-badge"></span>
+                    </div>
+                </div>
+                
+                <!-- Cột phải: Âm lịch -->
+                <div class="flex-1 text-center">
+                    <div class="mb-4">
+                        <div id="lunar-day" class="text-7xl md:text-8xl font-bold text-gray-700">01</div>
+                        <div id="lunar-month-info" class="text-xl text-gray-500">Tháng Mười Một</div>
+                    </div>
+                    
+                    <!-- Can Chi -->
+                    <div class="space-y-2 bg-amber-50 rounded-xl p-4">
+                        <div class="flex justify-between items-center py-1 border-b border-amber-200">
+                            <span class="text-gray-600">Ngày:</span>
+                            <span id="day-canchi" class="font-semibold text-amber-700">Giáp Tý</span>
+                        </div>
+                        <div class="flex justify-between items-center py-1 border-b border-amber-200">
+                            <span class="text-gray-600">Tháng:</span>
+                            <span id="month-canchi" class="font-semibold text-amber-700">Bính Tý</span>
+                        </div>
+                        <div class="flex justify-between items-center py-1">
+                            <span class="text-gray-600">Năm:</span>
+                            <span id="year-canchi" class="font-semibold text-amber-700">Ất Tỵ</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Ghi chú năm âm -->
+                    <div class="mt-4 text-center">
+                        <span id="zodiac-icon" class="text-2xl">🐍</span>
+                        <span id="lunar-year-name" class="text-lg font-medium text-gray-600 ml-2">Năm Ất Tỵ</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PHẦN 2: LỊCH THÁNG -->
+        <section id="month-calendar" class="bg-white rounded-2xl shadow-lg p-6">
+            <!-- Header điều khiển -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div class="flex items-center gap-2">
+                    <button onclick="changeMonth(-1)" class="nav-btn w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                    </button>
+                    <h2 id="calendar-title" class="text-xl md:text-2xl font-bold text-gray-700">Tháng 12 / 2025</h2>
+                    <button onclick="changeMonth(1)" class="nav-btn w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Dropdown chọn tháng/năm -->
+                <div class="flex items-center gap-3">
+                    <select id="month-select" onchange="onMonthYearChange()" class="px-4 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="0">Tháng 1</option>
+                        <option value="1">Tháng 2</option>
+                        <option value="2">Tháng 3</option>
+                        <option value="3">Tháng 4</option>
+                        <option value="4">Tháng 5</option>
+                        <option value="5">Tháng 6</option>
+                        <option value="6">Tháng 7</option>
+                        <option value="7">Tháng 8</option>
+                        <option value="8">Tháng 9</option>
+                        <option value="9">Tháng 10</option>
+                        <option value="10">Tháng 11</option>
+                        <option value="11">Tháng 12</option>
+                    </select>
+                    <select id="year-select" onchange="onMonthYearChange()" class="px-4 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Bảng lịch -->
+            <!-- <div class="overflow-x-auto"> -->
+                <!-- Header ngày trong tuần -->
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div class="text-center py-2 font-semibold text-gray-600">T2</div>
+                <div class="text-center py-2 font-semibold text-gray-600">T3</div>
+                <div class="text-center py-2 font-semibold text-gray-600">T4</div>
+                <div class="text-center py-2 font-semibold text-gray-600">T5</div>
+                <div class="text-center py-2 font-semibold text-gray-600">T6</div>
+                <div class="text-center py-2 font-semibold text-gray-600">T7</div>
+                <div class="text-center py-2 font-semibold text-red-500">CN</div>
+            </div>
+            
+            <!-- Các ngày trong tháng -->
+            <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                <!-- Sẽ được render bởi JavaScript -->
+            </div>
+            <!-- </div> -->
+            
+            <!-- Chú thích -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <div class="flex flex-wrap gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-emerald-500 rounded"></div>
+                        <span>Hôm nay</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-green-500 rounded"></div>
+                        <span>Ngày lễ</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-red-100 rounded"></div>
+                        <span>Chủ nhật</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Thông tin thêm -->
+        <section class="mt-6 bg-white rounded-2xl shadow-lg p-6">
+            <h3 class="text-lg font-bold text-gray-700 mb-4">📜 Các ngày lễ quan trọng năm <span id="holiday-year">2025</span></h3>
+            <div id="holiday-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Sẽ được render bởi JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">© 2025 Lịch Âm Việt Nam - Lịch Vạn Niên</p>
+            <p class="text-gray-500 text-sm mt-1">Thuật toán chuyển đổi Âm - Dương lịch chuẩn Việt Nam (Hồ Ngọc Đức)</p>
+        </div>
+    </footer>
+
+    <!-- Load JavaScript -->
+    <script src="lunar-calendar.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

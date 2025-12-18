@@ -104,6 +104,18 @@ function setupEventForm() {
     if (!form) return;
     form.addEventListener('submit', onEventFormSubmit);
 }
+function toggleEventForm() {
+    const form = document.getElementById('event-form');
+    const section = document.getElementById('personal-events');
+    if (!form) return;
+
+    form.classList.toggle('hidden');
+
+    // Khi mở form thì cuộn xuống khu vực sự kiện (hữu ích trên mobile)
+    if (!form.classList.contains('hidden') && section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
 // Chuyển date từ server thành key YYYY-MM-DD theo giờ địa phương
 function getEventDateKey(ev) {
     if (!ev || !ev.date) return null;
@@ -250,6 +262,9 @@ async function onEventFormSubmit(e) {
 
         renderDayEvents();
         renderMonthCalendar();
+        // Ẩn form sau khi lưu thành công
+        const form = document.getElementById('event-form');
+        if (form) form.classList.add('hidden');
     } catch (err) {
         console.error(err);
         statusEl.textContent = 'Không lưu được sự kiện. Kiểm tra lại kết nối hoặc URL Apps Script.';
@@ -327,7 +342,12 @@ function updateDayCalendar() {
     const yearCanChi = LunarCalendar.getYearCanChi(lunar.year);
     document.getElementById('zodiac-icon').textContent = zodiac;
     document.getElementById('lunar-year-name').textContent = 'Năm ' + yearCanChi;
-    
+    // Thông tin Tiết khí & Giờ hoàng đạo
+    const tietKhiEl = document.getElementById('tiet-khi');
+    if (tietKhiEl && LunarCalendar.getSolarTerm) {
+        const tk = LunarCalendar.getSolarTerm(lunar.jd);
+        tietKhiEl.textContent = (tk ? tk.name : '—');
+    } 
     // Kiểm tra ngày lễ
     const holidayInfo = document.getElementById('holiday-info');
     const solarKey = `${dd}/${mm}`;
@@ -364,107 +384,128 @@ function renderMonthCalendar() {
     
     // Số ngày trong tháng
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    
-    // Số ngày tháng trước cần hiển thị
     const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
-    
-    // Render các ô trống đầu tháng (tháng trước)
+    const today = new Date();
+
+    // Hàm tạo 1 ô ngày
+    function createCell({ year, monthIndex, day, isCurrentMonth }) {
+        const date = new Date(year, monthIndex, day);
+        const isToday = day === today.getDate() && monthIndex === today.getMonth() && year === today.getFullYear();
+        const isSelected = day === selectedDate.getDate() && monthIndex === selectedDate.getMonth() && year === selectedDate.getFullYear();
+        const isSunday = date.getDay() === 0;
+        const isSaturday = date.getDay() === 6;
+
+        const solarMonth = monthIndex + 1;
+        const lunar = LunarCalendar.solar2Lunar(day, solarMonth, year);
+
+        const solarKey = `${day}/${solarMonth}`;
+        const lunarKey = `${lunar.day}/${lunar.month}`;
+        const holiday = SOLAR_HOLIDAYS[solarKey] || LUNAR_HOLIDAYS[lunarKey];
+
+        const dateKey = formatDateKeyFromParts(year, monthIndex, day);
+        const dayEvents = personalEvents[dateKey] || [];
+
+        // Style nền / chữ
+        let bgClass = isCurrentMonth ? 'bg-white' : 'bg-gray-50 opacity-60';
+        let borderClass = 'border border-gray-100';
+        let textClass = isCurrentMonth ? 'text-gray-800' : 'text-gray-400';
+        let lunarTextClass = isCurrentMonth ? 'text-gray-500' : 'text-gray-400';
+
+        if (isToday && isCurrentMonth) {
+            bgClass = 'bg-emerald-500 text-white';
+            textClass = 'text-white';
+            lunarTextClass = 'text-emerald-100';
+        } else if (isSunday && isCurrentMonth) {
+            textClass = 'text-red-500';
+        } else if (isSaturday && isCurrentMonth) {
+            textClass = 'text-blue-500';
+        }
+
+        if (isSelected && isCurrentMonth && !isToday) {
+            borderClass = 'border-2 border-emerald-500';
+            bgClass = 'bg-emerald-50';
+        }
+
+        let lunarDisplay = lunar.day;
+        if (lunar.day === 1 || lunar.day === 15) {
+            lunarDisplay = `${lunar.day}/${lunar.month}`;
+            lunarTextClass = (isCurrentMonth ? 'text-red-500' : 'text-red-400') + ' font-bold';
+        }
+
+        // Các chip sự kiện / ngày lễ
+        let chipsHtml = '';
+
+        // Chip ngày lễ (màu xanh lá)
+        if (holiday) {
+            chipsHtml += `
+                <div class="mt-0.5 sm:mt-1 inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[9px] sm:text-[10px] md:text-[11px] font-medium max-w-full truncate"
+                    title="${holiday}">
+                    ${holiday}
+                </div>
+            `;
+        }
+
+        // Chip sự kiện cá nhân (màu xanh dương nhạt)
+        if (dayEvents.length) {
+            const maxShow = 3;
+
+            dayEvents.slice(0, maxShow).forEach(ev => {
+                const title = ev.title || '';
+                chipsHtml += `
+                    <div class="mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[9px] sm:text-[10px] md:text-[11px] font-medium max-w-full truncate border border-sky-200"
+                        title="${title}">
+                        ${title}
+                    </div>
+                `;
+            });
+
+            if (dayEvents.length > maxShow) {
+                chipsHtml += `
+                    <div class="mt-0.5 sm:mt-1 text-[9px] sm:text-[10px] text-gray-400">
+                        +${dayEvents.length - maxShow} sự kiện nữa
+                    </div>
+                `;
+            }
+        }
+
+        return `
+            <div class="calendar-day p-1.5 sm:p-2 md:p-3 min-h-[90px] sm:min-h-[110px] md:min-h-[130px] rounded-xl ${bgClass} ${borderClass} cursor-pointer flex flex-col"
+                onclick="selectDate(${year}, ${monthIndex}, ${day})">
+                <!-- Hàng tiêu đề ngày: trên mobile dương lịch trên, âm lịch dưới -->
+                <div class="flex flex-col md:flex-row md:items-baseline md:justify-between gap-0.5 md:gap-1">
+                    <div class="text-sm sm:text-base md:text-lg font-semibold ${textClass} leading-none">${day}</div>
+                    <div class="text-[11px] sm:text-xs ${lunarTextClass} leading-none">${lunarDisplay}</div>
+                </div>
+
+                <!-- Khu vực hiển thị chip sự kiện -->
+                <div class="mt-1 sm:mt-1.5 flex-1 flex flex-col overflow-hidden">
+                    ${chipsHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    // Ô tháng trước
     for (let i = startDay - 1; i >= 0; i--) {
         const day = prevMonthDays - i;
         const prevMonthIndex = viewMonth === 0 ? 11 : viewMonth - 1;
         const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
-        const lunar = LunarCalendar.solar2Lunar(day, prevMonthIndex + 1, prevYear);
-        const dateKey = formatDateKeyFromParts(prevYear, prevMonthIndex, day);
-        const hasEvents = personalEvents[dateKey] && personalEvents[dateKey].length;
-        
-        grid.innerHTML += `
-            <div class="calendar-day p-2 min-h-[60px] md:min-h-[80px] rounded-lg bg-gray-50 opacity-50 cursor-pointer"
-                 onclick="selectDate(${prevYear}, ${prevMonthIndex}, ${day})">
-                <div class="text-lg font-medium text-gray-400">${day}</div>
-                <div class="text-xs text-gray-400">${lunar.day}</div>
-                ${hasEvents ? '<div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 mx-auto"></div>' : ''}
-            </div>
-        `;
+        grid.innerHTML += createCell({ year: prevYear, monthIndex: prevMonthIndex, day, isCurrentMonth: false });
     }
-    
-    // Render các ngày trong tháng
-    const today = new Date();
-    for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(viewYear, viewMonth, day);
-        const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
-        const isSelected = day === selectedDate.getDate() && viewMonth === selectedDate.getMonth() && viewYear === selectedDate.getFullYear();
-        const isSunday = date.getDay() === 0;
-        const isSaturday = date.getDay() === 6;
-        
-        // Chuyển sang âm lịch
-        const lunar = LunarCalendar.solar2Lunar(day, viewMonth + 1, viewYear);
-        
-        // Kiểm tra ngày lễ
-        const solarKey = `${day}/${viewMonth + 1}`;
-        const lunarKey = `${lunar.day}/${lunar.month}`;
-        const holiday = SOLAR_HOLIDAYS[solarKey] || LUNAR_HOLIDAYS[lunarKey];
 
-        // Kiểm tra sự kiện cá nhân
-        const dateKey = formatDateKeyFromParts(viewYear, viewMonth, day);
-        const hasEvents = personalEvents[dateKey] && personalEvents[dateKey].length;
-        
-        // Style classes
-        let bgClass = 'bg-white hover:bg-gray-50';
-        let textClass = 'text-gray-700';
-        let lunarTextClass = 'text-gray-500';
-        
-        if (isToday) {
-            bgClass = 'bg-emerald-500 hover:bg-emerald-600';
-            textClass = 'text-white';
-            lunarTextClass = 'text-emerald-100';
-        } else if (isSunday) {
-            bgClass = 'bg-red-50 hover:bg-red-100';
-            textClass = 'text-red-500';
-        } else if (isSaturday) {
-            textClass = 'text-blue-500';
-        }
-        
-        if (isSelected && !isToday) {
-            bgClass = 'bg-emerald-100 hover:bg-emerald-200 ring-2 ring-emerald-500';
-        }
-        
-        // Hiển thị ngày âm đặc biệt (mùng 1)
-        let lunarDisplay = lunar.day;
-        if (lunar.day === 1) {
-            lunarDisplay = `${lunar.day}/${lunar.month}`;
-            lunarTextClass = isToday ? 'text-emerald-100 font-bold' : 'text-red-500 font-bold';
-        }
-        
-        grid.innerHTML += `
-            <div class="calendar-day p-2 min-h-[60px] md:min-h-[80px] rounded-lg ${bgClass} cursor-pointer border border-gray-100"
-                 onclick="selectDate(${viewYear}, ${viewMonth}, ${day})">
-                <div class="text-lg md:text-xl font-semibold ${textClass}">${day}</div>
-                <div class="text-xs ${lunarTextClass}">${lunarDisplay}</div>
-                ${holiday ? `<div class="text-[10px] bg-green-500 text-white px-1 rounded mt-1 truncate" title="${holiday}">${holiday}</div>` : ''}
-                ${hasEvents ? '<div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 mx-auto"></div>' : ''}
-            </div>
-        `;
+    // Ô tháng hiện tại
+    for (let day = 1; day <= daysInMonth; day++) {
+        grid.innerHTML += createCell({ year: viewYear, monthIndex: viewMonth, day, isCurrentMonth: true });
     }
-    
-    // Render các ngày còn lại (tháng sau)
+
+    // Ô tháng sau
     const totalCells = startDay + daysInMonth;
     const remainingCells = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
-    
+
     for (let i = 1; i <= remainingCells; i++) {
         const nextMonthIndex = viewMonth === 11 ? 0 : viewMonth + 1;
         const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
-        const lunar = LunarCalendar.solar2Lunar(i, nextMonthIndex + 1, nextYear);
-        const dateKey = formatDateKeyFromParts(nextYear, nextMonthIndex, i);
-        const hasEvents = personalEvents[dateKey] && personalEvents[dateKey].length;
-        
-        grid.innerHTML += `
-            <div class="calendar-day p-2 min-h-[60px] md:min-h-[80px] rounded-lg bg-gray-50 opacity-50 cursor-pointer"
-                 onclick="selectDate(${nextYear}, ${nextMonthIndex}, ${i})">
-                <div class="text-lg font-medium text-gray-400">${i}</div>
-                <div class="text-xs text-gray-400">${lunar.day}</div>
-                ${hasEvents ? '<div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 mx-auto"></div>' : ''}
-            </div>
-        `;
+        grid.innerHTML += createCell({ year: nextYear, monthIndex: nextMonthIndex, day: i, isCurrentMonth: false });
     }
 }
 
@@ -587,13 +628,264 @@ function goToToday() {
 /**
  * Cập nhật thời tiết (placeholder)
  */
+function setWeatherDisplay(text, icon = '☁️') {
+    const iconEl = document.getElementById('weather-icon');
+    const textEl = document.getElementById('weather-text');
+    if (!iconEl || !textEl) return;
+    iconEl.textContent = icon;
+    textEl.textContent = text;
+}
+
+let currentWeatherInfo = null; // lưu kết quả mới nhất
+
+function mapAqiToStatus(aqi) {
+    if (aqi == null || isNaN(aqi)) {
+        return {
+            label: 'Không có dữ liệu',
+            color: 'text-gray-600',
+            bg: 'bg-gray-100',
+            emoji: '🌫'
+        };
+    }
+    if (aqi <= 50) {
+        return { label: 'Tốt',       color: 'text-green-700',  bg: 'bg-green-100',  emoji: '🟢' };
+    }
+    if (aqi <= 100) {
+        return { label: 'Trung bình',color: 'text-yellow-700', bg: 'bg-yellow-100', emoji: '🟡' };
+    }
+    if (aqi <= 150) {
+        return { label: 'Kém',       color: 'text-orange-700', bg: 'bg-orange-100', emoji: '🟠' };
+    }
+    if (aqi <= 200) {
+        return { label: 'Xấu',       color: 'text-red-700',    bg: 'bg-red-100',    emoji: '🔴' };
+    }
+    return { label: 'Rất xấu',       color: 'text-purple-700', bg: 'bg-purple-100', emoji: '🟣' };
+}
+
+// Map mã thời tiết của Open-Meteo sang icon
+function getWeatherIconFromCode(code) {
+    if (code === 0) return '☀️';                      // Trời quang
+    if (code === 1 || code === 2) return '🌤️';        // Ít mây
+    if (code === 3) return '☁️';                      // Nhiều mây
+    if (code >= 45 && code <= 48) return '🌫️';        // Sương mù
+    if (code >= 51 && code <= 67) return '🌦️';        // Mưa phùn / mưa nhẹ
+    if (code >= 71 && code <= 77) return '❄️';        // Tuyết
+    if (code >= 80 && code <= 82) return '🌧️';        // Mưa rào
+    if (code >= 95) return '⛈️';                      // Dông bão
+    return '🌤️';
+}
+
 function updateWeather() {
-    const weatherIcons = ['☀️', '⛅', '🌤️', '🌥️', '🌧️'];
-    const temps = [25, 28, 30, 32, 27];
-    const randomIndex = Math.floor(Math.random() * weatherIcons.length);
-    
-    document.getElementById('weather-icon').textContent = weatherIcons[randomIndex];
-    document.getElementById('weather-text').textContent = `Hà Nội - ${temps[randomIndex]}°C`;
+    if (!navigator.geolocation) {
+        const locEl = document.getElementById('weather-location');
+        if (locEl) locEl.textContent = 'Trình duyệt không hỗ trợ định vị';
+        return;
+    }
+
+    const locEl = document.getElementById('weather-location');
+    if (locEl) locEl.textContent = 'Đang lấy vị trí...';
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            fetchWeatherAndAirQuality(lat, lon);
+        },
+        (err) => {
+            console.error('Lỗi geolocation', err);
+            const locEl2 = document.getElementById('weather-location');
+            if (locEl2) {
+                locEl2.textContent =
+                    err.code === err.PERMISSION_DENIED
+                        ? 'Bạn đã từ chối quyền vị trí'
+                        : 'Không truy cập được vị trí';
+            }
+        },
+        { enableHighAccuracy: false, timeout: 10000 }
+    );
+}
+
+async function fetchWeatherAndAirQuality(lat, lon) {
+    try {
+        // WEATHER
+        const weatherUrl =
+            `https://api.open-meteo.com/v1/forecast` +
+            `?latitude=${lat}&longitude=${lon}` +
+            `&current_weather=true` +
+            `&hourly=relativehumidity_2m,precipitation_probability` +
+            `&timezone=auto`;
+
+        console.log('Weather URL:', weatherUrl);
+
+        const weatherRes = await fetch(weatherUrl);
+        const weatherText = await weatherRes.text();
+        console.log('Weather status:', weatherRes.status);
+        console.log('Weather raw body:', weatherText);
+
+        if (!weatherRes.ok) {
+            throw new Error('Weather HTTP ' + weatherRes.status);
+        }
+
+        const weatherData = JSON.parse(weatherText);
+        const current = weatherData.current_weather;
+        if (!current) throw new Error('No current_weather in response');
+
+        const temp  = Math.round(current.temperature);
+        const icon  = getWeatherIconFromCode(current.weathercode);
+        const wind  = current.windspeed != null ? Math.round(current.windspeed) : null;
+
+        // Độ ẩm + xác suất mưa: tìm giờ gần với current.time
+        let humidity = null;
+        let rainProb = null;
+        try {
+            const times  = weatherData.hourly.time;
+            const hums   = weatherData.hourly.relativehumidity_2m;
+            const rains  = weatherData.hourly.precipitation_probability || [];
+
+            const nowMs = Date.parse(current.time);
+            let bestIdx = 0;
+            let bestDiff = Infinity;
+            for (let i = 0; i < times.length; i++) {
+                const tMs = Date.parse(times[i]);
+                const diff = Math.abs(nowMs - tMs);
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestIdx = i;
+                }
+            }
+            humidity = hums[bestIdx];
+            rainProb = rains[bestIdx] != null ? rains[bestIdx] : null;
+        } catch (e) {
+            console.warn('Không lấy được độ ẩm/khả năng mưa chính xác:', e);
+        }
+
+        // AQI
+        let aqi = null;
+        let aqiInfo = mapAqiToStatus(null);
+        try {
+            const airUrl =
+                `https://air-quality-api.open-meteo.com/v1/air-quality` +
+                `?latitude=${lat}&longitude=${lon}` +
+                `&hourly=us_aqi` +
+                `&timezone=auto`;
+
+            console.log('Air URL:', airUrl);
+            const airRes = await fetch(airUrl);
+            const airText = await airRes.text();
+            console.log('Air status:', airRes.status);
+            console.log('Air raw body:', airText);
+
+            if (airRes.ok) {
+                const airData = JSON.parse(airText);
+                if (airData.hourly && Array.isArray(airData.hourly.us_aqi)) {
+                    const arr = airData.hourly.us_aqi.filter(v => v != null);
+                    if (arr.length) {
+                        aqi = Math.round(arr[arr.length - 1]);
+                        aqiInfo = mapAqiToStatus(aqi);
+                    }
+                }
+            } else {
+                console.warn('Air HTTP', airRes.status);
+            }
+        } catch (e) {
+            console.warn('AQI fetch error:', e);
+        }
+
+        // TÊN THÀNH PHỐ: BigDataCloud (có CORS, không cần key)
+        let city = 'Vị trí của bạn';
+        try {
+            const geoUrl =
+                `https://api.bigdatacloud.net/data/reverse-geocode-client` +
+                `?latitude=${lat}&longitude=${lon}&localityLanguage=vi`;
+
+            console.log('Geo URL:', geoUrl);
+            const geoRes = await fetch(geoUrl);
+            const geoText = await geoRes.text();
+            console.log('Geo status:', geoRes.status);
+            console.log('Geo raw body:', geoText);
+
+            if (geoRes.ok) {
+                const geoData = JSON.parse(geoText);
+                city = geoData.city ||
+                       geoData.locality ||
+                       geoData.principalSubdivision ||
+                       city;
+            }
+        } catch (e) {
+            console.warn('Geo fetch error:', e);
+        }
+
+        currentWeatherInfo = { city, temp, humidity, wind, rainProb, aqi, aqiInfo, icon };
+        renderWeatherUI();
+    } catch (err) {
+        console.error('Weather error:', err);
+        const locEl = document.getElementById('weather-location');
+        if (locEl) {
+            locEl.textContent = 'Không lấy được thời tiết (mở Console để xem lỗi)';
+        }
+    }
+}
+
+function renderWeatherUI() {
+    if (!currentWeatherInfo) return;
+    const { city, temp, humidity, wind, rainProb, aqi, aqiInfo, icon } = currentWeatherInfo;
+
+    const tempStr = temp != null ? `${temp}°C` : '--°C';
+    const humStr  = humidity != null ? `${humidity}%` : '--%';
+    const windStr = wind != null ? `${wind} km/h` : '-- km/h';
+    const rainStr = rainProb != null ? `${rainProb}%` : '--%';
+
+    // Mini block trong Lịch Ngày
+    const iconEl   = document.getElementById('weather-icon');
+    const locEl    = document.getElementById('weather-location');
+    const tempEl   = document.getElementById('weather-temp');
+    const humEl    = document.getElementById('weather-humidity');
+    const windEl   = document.getElementById('weather-wind');
+    const rainEl   = document.getElementById('weather-rain');
+    const aqiMini  = document.getElementById('weather-aqi-mini');
+
+    if (iconEl) iconEl.textContent = icon || '☁️';
+    if (locEl)  locEl.textContent  = city || 'Vị trí của bạn';
+    if (tempEl) tempEl.textContent = `🌡 ${tempStr}`;
+    if (humEl)  humEl.textContent  = `💧 ${humStr}`;
+    if (windEl) windEl.textContent = `🍃 ${windStr}`;
+    if (rainEl) rainEl.textContent = `🌧 ${rainStr}`;
+    if (aqiMini) {
+        const text = aqi != null
+            ? `${aqiInfo.emoji} AQI ${aqi} – ${aqiInfo.label}`
+            : '🌫 AQI -- – Không có dữ liệu';
+        aqiMini.textContent = text;
+        aqiMini.className = 'mt-0.5 text-[11px] ' + (aqiInfo.color || 'text-gray-600');
+    }
+
+    // Block chi tiết bên dưới Sự kiện cá nhân
+    const dLoc   = document.getElementById('weather-detail-location');
+    const dTemp  = document.getElementById('weather-detail-temp');
+    const dHum   = document.getElementById('weather-detail-humidity');
+    const dWind  = document.getElementById('weather-detail-wind');
+    const dRain  = document.getElementById('weather-detail-rain');
+    const dAqi   = document.getElementById('weather-detail-aqi');
+    const dDesc  = document.getElementById('weather-detail-desc');
+
+    if (dLoc)  dLoc.textContent  = city || 'Vị trí của bạn';
+    if (dTemp) dTemp.textContent = `🌡 Nhiệt độ: ${tempStr}`;
+    if (dHum)  dHum.textContent  = `💧 Độ ẩm: ${humStr}`;
+    if (dWind) dWind.textContent = `🍃 Gió: ${windStr}`;
+    if (dRain) dRain.textContent = `🌧 Khả năng mưa: ${rainStr}`;
+
+    if (dAqi) {
+        const text = aqi != null
+            ? `${aqiInfo.emoji} AQI ${aqi} – ${aqiInfo.label}`
+            : '🌫 AQI -- – Không có dữ liệu';
+        dAqi.textContent = text;
+        dAqi.className =
+            'mt-2 inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ' +
+            (aqiInfo.bg || 'bg-gray-100') + ' ' +
+            (aqiInfo.color || 'text-gray-700');
+    }
+    if (dDesc) {
+        dDesc.textContent = 'Dữ liệu Open‑Meteo (dự báo gần thời điểm hiện tại).';
+    }
 }
 
 // Khởi chạy khi trang load xong

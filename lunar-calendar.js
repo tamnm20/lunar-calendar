@@ -19,12 +19,18 @@ const LunarCalendar = (function() {
     
     // Địa Chi  
     const CHI = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
-    
+    // 24 tiết khí (theo kinh độ mặt trời, mỗi tiết 15 độ)
+    const SOLAR_TERMS = [
+        'Xuân phân','Thanh minh','Cốc vũ','Lập hạ','Tiểu mãn','Mang chủng',
+        'Hạ chí','Tiểu thử','Đại thử','Lập thu','Xử thử','Bạch lộ',
+        'Thu phân','Hàn lộ','Sương giáng','Lập đông','Tiểu tuyết','Đại tuyết',
+        'Đông chí','Tiểu hàn','Đại hàn','Lập xuân','Vũ Thủy','Kinh Trập'
+    ];
     // Con giáp
     const ZODIAC = ['🐀', '🐂', '🐅', '🐈', '🐉', '🐍', '🐴', '🐐', '🐵', '🐔', '🐕', '🐷'];
     
     // Tên tháng âm
-    const LUNAR_MONTHS = ['Giêng', 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy', 'Tám', 'Chín', 'Mười', 'Một', 'Chạp'];
+    const LUNAR_MONTHS = ['Giêng', 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy', 'Tám', 'Chín', 'Mười', 'Mười Một', 'Chạp'];
 
     // ========== CORE FUNCTIONS ==========
     
@@ -349,6 +355,17 @@ const LunarCalendar = (function() {
     function getLunarMonthName(month, leap) {
         return (leap ? 'Nhuận ' : '') + 'Tháng ' + LUNAR_MONTHS[month - 1];
     }
+    function getSolarTerm(jd) {
+        const timeZone = TIMEZONE;
+        const lon = sunLongitudeExact(jd + 0.5 - timeZone / 24); // kinh độ mặt trời (độ)
+        let idx = Math.floor(lon / 15) % 24;
+        if (idx < 0) idx += 24;
+        return {
+            index: idx,
+            name: SOLAR_TERMS[idx],
+            degree: lon
+        };
+    }
 
     // ========== PUBLIC API ==========
     return {
@@ -359,6 +376,8 @@ const LunarCalendar = (function() {
         getYearCanChi,
         getYearZodiac,
         getLunarMonthName,
+        getSolarTerm,
+        SOLAR_TERMS,
         jdFromDate,
         jdToDate,
         CAN,

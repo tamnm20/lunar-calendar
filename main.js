@@ -39,13 +39,222 @@ const LUNAR_HOLIDAYS = {
 
 // Các ngày trong tuần
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+// URL Web App của Google Apps Script (sẽ tạo ở bước 3.3)
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv25LR8-BCAwT5Qi8-xVyOcHEwHSs7-mxfaAzyRnN_q_Y4Owh-4E936TTd4r0RKiCUIA/exec'; // thay bằng URL Web App thật
+
+// Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
+let personalEvents = {};
 
 // ========== GLOBAL VARIABLES ==========
 let currentDate = new Date();
 let selectedDate = new Date();
 let viewMonth = currentDate.getMonth();
 let viewYear = currentDate.getFullYear();
+// Định dạng key ngày: YYYY-MM-DD (dùng để lưu vào Sheet & tra cứu)
+function formatDateKey(date) {
+    const y = date.getFullYear();
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const d = date.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
 
+// Định dạng key ngày từ year, month(0-based), day
+function formatDateKeyFromParts(year, month0, day) {
+    const m = (month0 + 1).toString().padStart(2, '0');
+    const d = day.toString().padStart(2, '0');
+    return `${year}-${m}-${d}`;
+}
+
+// Định dạng ngày tiếng Việt đơn giản: d/m/yyyy (không pad 0)
+function formatDateVi(date) {
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+}
+
+// Hiển thị danh sách sự kiện của selectedDate
+function renderDayEvents() {
+    const listEl = document.getElementById('event-list');
+    const dateTextEl = document.getElementById('event-date-text');
+    if (!listEl || !dateTextEl) return; // phòng khi HTML chưa được thêm
+
+    const key = formatDateKey(selectedDate);
+    const events = personalEvents[key] || [];
+
+    dateTextEl.textContent = `Sự kiện cho ngày ${formatDateVi(selectedDate)}`;
+
+    listEl.innerHTML = '';
+    if (!events.length) {
+        listEl.innerHTML = '<li class="text-gray-500 text-sm">Chưa có sự kiện nào cho ngày này.</li>';
+        return;
+    }
+
+    events.forEach(ev => {
+        const li = document.createElement('li');
+        li.className = 'p-2 bg-gray-50 rounded border border-gray-100';
+        li.innerHTML = `
+            <div class="font-medium">${ev.title}</div>
+            ${ev.description ? `<div class="text-xs text-gray-500 mt-1">${ev.description}</div>` : ''}
+        `;
+        listEl.appendChild(li);
+    });
+}
+
+// Gắn submit handler cho form thêm sự kiện
+function setupEventForm() {
+    const form = document.getElementById('event-form');
+    if (!form) return;
+    form.addEventListener('submit', onEventFormSubmit);
+}
+// Chuyển date từ server thành key YYYY-MM-DD theo giờ địa phương
+function getEventDateKey(ev) {
+    if (!ev || !ev.date) return null;
+
+    // Nếu server trả chuỗi ISO: "2025-12-17T17:00:00.000Z"
+    if (typeof ev.date === 'string') {
+        const d = new Date(ev.date);
+        if (!isNaN(d.getTime())) {
+            // Đổi sang ngày local rồi format "YYYY-MM-DD"
+            return formatDateKey(d);
+        }
+        // Fallback: lấy 10 kí tự đầu "YYYY-MM-DD"
+        return ev.date.slice(0, 10);
+    }
+
+    // Nếu (hiếm) là số timestamp
+    if (typeof ev.date === 'number') {
+        const d = new Date(ev.date);
+        if (!isNaN(d.getTime())) {
+            return formatDateKey(d);
+        }
+    }
+
+    return null;
+}
+// Tải toàn bộ sự kiện từ Google Sheet qua Apps Script
+async function loadPersonalEvents() {
+    if (!APPS_SCRIPT_URL) {
+        console.warn('Chưa cấu hình APPS_SCRIPT_URL, bỏ qua tải sự kiện cá nhân.');
+        return;
+    }
+
+    try {
+        const res = await fetch(APPS_SCRIPT_URL);
+        const text = await res.text();
+        console.log('Apps Script GET status:', res.status);
+        console.log('Apps Script GET raw response:', text);
+
+        if (!res.ok) {
+            console.warn('GET Apps Script trả về HTTP ' + res.status);
+            return;
+        }
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.warn('GET Apps Script trả về không phải JSON:', e);
+            return;
+        }
+
+        if (!data || !Array.isArray(data.events)) {
+            console.warn('Định dạng dữ liệu sự kiện không hợp lệ', data);
+            return;
+        }
+
+        personalEvents = {};
+        data.events.forEach(ev => {
+            const key = getEventDateKey(ev); // DÙNG KEY CHUẨN HÓA
+            if (!key || !ev.title) return;
+            if (!personalEvents[key]) personalEvents[key] = [];
+            personalEvents[key].push(ev);
+        });
+
+        renderDayEvents();
+        renderMonthCalendar();
+    } catch (err) {
+        console.error('Không tải được sự kiện cá nhân từ Apps Script', err);
+    }
+}
+
+// Gửi sự kiện mới lên Apps Script
+async function addPersonalEvent(eventData) {
+    if (!APPS_SCRIPT_URL) {
+        throw new Error('APPS_SCRIPT_URL chưa được cấu hình trong main.js');
+    }
+
+    // Gửi dưới dạng form-urlencoded, param "data" chứa JSON
+    const body = new URLSearchParams();
+    body.append('data', JSON.stringify(eventData));
+
+    let res;
+    try {
+        res = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            body // KHÔNG cần set headers Content-Type, trình duyệt tự dùng application/x-www-form-urlencoded
+        });
+    } catch (networkErr) {
+        console.error('Lỗi khi gọi fetch tới Apps Script:', networkErr);
+        throw new Error('Không thể kết nối tới Apps Script (lỗi mạng hoặc CORS).');
+    }
+
+    const text = await res.text();
+    console.log('Apps Script response status:', res.status);
+    console.log('Apps Script raw response:', text);
+
+    if (!res.ok) {
+        throw new Error('Apps Script trả về HTTP ' + res.status);
+    }
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (jsonErr) {
+        console.error('Lỗi parse JSON:', jsonErr);
+        throw new Error('Phản hồi từ Apps Script không phải JSON hợp lệ.');
+    }
+
+    if (!data.success) {
+        throw new Error(data.message || 'Lỗi khi lưu sự kiện trên Apps Script');
+    }
+    return data;
+}
+
+// Xử lý submit form thêm sự kiện
+async function onEventFormSubmit(e) {
+    e.preventDefault();
+
+    const titleInput = document.getElementById('event-title');
+    const descInput = document.getElementById('event-description');
+    const statusEl = document.getElementById('event-status');
+
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+
+    if (!title) {
+        statusEl.textContent = 'Vui lòng nhập tiêu đề sự kiện.';
+        return;
+    }
+
+    const dateStr = formatDateKey(selectedDate);
+    statusEl.textContent = 'Đang lưu sự kiện...';
+
+    try {
+        const res = await addPersonalEvent({ date: dateStr, title, description });
+        const id = res.id || Date.now();
+
+        if (!personalEvents[dateStr]) personalEvents[dateStr] = [];
+        personalEvents[dateStr].push({ id, date: dateStr, title, description });
+
+        titleInput.value = '';
+        descInput.value = '';
+        statusEl.textContent = 'Đã lưu sự kiện.';
+
+        renderDayEvents();
+        renderMonthCalendar();
+    } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Không lưu được sự kiện. Kiểm tra lại kết nối hoặc URL Apps Script.';
+    }
+}
 // ========== INITIALIZATION ==========
 function init() {
     // Khởi tạo dropdown năm (từ 1900 đến 2100)
@@ -66,6 +275,10 @@ function init() {
     renderMonthCalendar();
     renderHolidayList();
     updateWeather();
+
+    // Thiết lập form & tải sự kiện cá nhân
+    setupEventForm();
+    loadPersonalEvents();
     
     // Debug: In ra kết quả để kiểm tra
     console.log('=== KIỂM TRA THUẬT TOÁN ÂM LỊCH ===');
@@ -128,6 +341,8 @@ function updateDayCalendar() {
     } else {
         holidayInfo.classList.add('hidden');
     }
+    // Cập nhật danh sách sự kiện cá nhân của ngày
+    renderDayEvents();
 }
 
 /**
@@ -156,15 +371,18 @@ function renderMonthCalendar() {
     // Render các ô trống đầu tháng (tháng trước)
     for (let i = startDay - 1; i >= 0; i--) {
         const day = prevMonthDays - i;
-        const prevMonth = viewMonth === 0 ? 12 : viewMonth;
+        const prevMonthIndex = viewMonth === 0 ? 11 : viewMonth - 1;
         const prevYear = viewMonth === 0 ? viewYear - 1 : viewYear;
-        const lunar = LunarCalendar.solar2Lunar(day, prevMonth, prevYear);
+        const lunar = LunarCalendar.solar2Lunar(day, prevMonthIndex + 1, prevYear);
+        const dateKey = formatDateKeyFromParts(prevYear, prevMonthIndex, day);
+        const hasEvents = personalEvents[dateKey] && personalEvents[dateKey].length;
         
         grid.innerHTML += `
             <div class="calendar-day p-2 min-h-[60px] md:min-h-[80px] rounded-lg bg-gray-50 opacity-50 cursor-pointer"
-                 onclick="selectDate(${prevYear}, ${prevMonth - 1}, ${day})">
+                 onclick="selectDate(${prevYear}, ${prevMonthIndex}, ${day})">
                 <div class="text-lg font-medium text-gray-400">${day}</div>
                 <div class="text-xs text-gray-400">${lunar.day}</div>
+                ${hasEvents ? '<div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 mx-auto"></div>' : ''}
             </div>
         `;
     }
@@ -185,6 +403,10 @@ function renderMonthCalendar() {
         const solarKey = `${day}/${viewMonth + 1}`;
         const lunarKey = `${lunar.day}/${lunar.month}`;
         const holiday = SOLAR_HOLIDAYS[solarKey] || LUNAR_HOLIDAYS[lunarKey];
+
+        // Kiểm tra sự kiện cá nhân
+        const dateKey = formatDateKeyFromParts(viewYear, viewMonth, day);
+        const hasEvents = personalEvents[dateKey] && personalEvents[dateKey].length;
         
         // Style classes
         let bgClass = 'bg-white hover:bg-gray-50';
@@ -206,7 +428,7 @@ function renderMonthCalendar() {
             bgClass = 'bg-emerald-100 hover:bg-emerald-200 ring-2 ring-emerald-500';
         }
         
-        // Hiển thị ngày âm đặc biệt (mùng 1 hoặc ngày 1)
+        // Hiển thị ngày âm đặc biệt (mùng 1)
         let lunarDisplay = lunar.day;
         if (lunar.day === 1) {
             lunarDisplay = `${lunar.day}/${lunar.month}`;
@@ -219,6 +441,7 @@ function renderMonthCalendar() {
                 <div class="text-lg md:text-xl font-semibold ${textClass}">${day}</div>
                 <div class="text-xs ${lunarTextClass}">${lunarDisplay}</div>
                 ${holiday ? `<div class="text-[10px] bg-green-500 text-white px-1 rounded mt-1 truncate" title="${holiday}">${holiday}</div>` : ''}
+                ${hasEvents ? '<div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 mx-auto"></div>' : ''}
             </div>
         `;
     }
@@ -228,15 +451,18 @@ function renderMonthCalendar() {
     const remainingCells = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
     
     for (let i = 1; i <= remainingCells; i++) {
-        const nextMonth = viewMonth === 11 ? 1 : viewMonth + 2;
+        const nextMonthIndex = viewMonth === 11 ? 0 : viewMonth + 1;
         const nextYear = viewMonth === 11 ? viewYear + 1 : viewYear;
-        const lunar = LunarCalendar.solar2Lunar(i, nextMonth, nextYear);
+        const lunar = LunarCalendar.solar2Lunar(i, nextMonthIndex + 1, nextYear);
+        const dateKey = formatDateKeyFromParts(nextYear, nextMonthIndex, i);
+        const hasEvents = personalEvents[dateKey] && personalEvents[dateKey].length;
         
         grid.innerHTML += `
             <div class="calendar-day p-2 min-h-[60px] md:min-h-[80px] rounded-lg bg-gray-50 opacity-50 cursor-pointer"
-                 onclick="selectDate(${nextYear}, ${nextMonth - 1}, ${i})">
+                 onclick="selectDate(${nextYear}, ${nextMonthIndex}, ${i})">
                 <div class="text-lg font-medium text-gray-400">${i}</div>
                 <div class="text-xs text-gray-400">${lunar.day}</div>
+                ${hasEvents ? '<div class="mt-1 w-2 h-2 rounded-full bg-emerald-500 mx-auto"></div>' : ''}
             </div>
         `;
     }

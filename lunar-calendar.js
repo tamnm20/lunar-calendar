@@ -21,7 +21,7 @@ const LunarCalendar = (function() {
     const CHI = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
     
     // Con giáp
-    const ZODIAC = ['🐀', '🐂', '🐅', '🐇', '🐉', '🐍', '🐴', '🐐', '🐵', '🐔', '🐕', '🐷'];
+    const ZODIAC = ['🐀', '🐂', '🐅', '🐈', '🐉', '🐍', '🐴', '🐐', '🐵', '🐔', '🐕', '🐷'];
     
     // Tên tháng âm
     const LUNAR_MONTHS = ['Giêng', 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy', 'Tám', 'Chín', 'Mười', 'Một', 'Chạp'];

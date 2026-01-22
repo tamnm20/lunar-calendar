@@ -6,7 +6,7 @@ const FILES_TO_CACHE = [
     "./main.js",
     "./lunar-calendar.js",
     "./manifest.json",
-    "./favicon.png"
+    "./public/favicon.png"
 ];
 
 self.addEventListener("install", e => {

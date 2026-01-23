@@ -44,7 +44,45 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv25LR8-BCAwT5
 
 // Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
 let personalEvents = {};
+// Cơ chế mở khóa phần sự kiện cá nhân (PIN cực đơn giản, chỉ chạy phía client)
+const PERSONAL_EVENTS_PIN = '2212';   // ĐỔI PIN TẠI ĐÂY
+let eventsUnlocked = false;           // trạng thái đã mở khóa hay chưa
+function updatePersonalEventsVisibility() {
+    const content = document.getElementById('personal-events-content');
+    const lockBtn = document.getElementById('events-lock-btn');
+    if (!content || !lockBtn) return;
 
+    if (eventsUnlocked) {
+        content.classList.remove('hidden');
+        lockBtn.textContent = '🔓 Khóa lại';
+    } else {
+        content.classList.add('hidden');
+        lockBtn.textContent = '🔒 Mở khóa';
+    }
+}
+function requestUnlockEvents() {
+    // Nếu đang mở rồi → cho phép khóa lại
+    if (eventsUnlocked) {
+        if (confirm('Bạn có muốn khóa lại phần sự kiện cá nhân?')) {
+            eventsUnlocked = false;
+            localStorage.removeItem('eventsUnlocked');
+            updatePersonalEventsVisibility();
+        }
+        return;
+    }
+
+    // Đang khóa → yêu cầu nhập PIN
+    const pin = prompt('Nhập mã PIN để mở phần sự kiện cá nhân:');
+    if (pin === null) return; // người dùng bấm Cancel
+
+    if (pin === PERSONAL_EVENTS_PIN) {
+        eventsUnlocked = true;
+        localStorage.setItem('eventsUnlocked', 'true');
+        updatePersonalEventsVisibility();
+    } else {
+        alert('Sai mã PIN, vui lòng thử lại.');
+    }
+}
 // ========== GLOBAL VARIABLES ==========
 let currentDate = new Date();
 let selectedDate = new Date();
@@ -105,13 +143,18 @@ function setupEventForm() {
     form.addEventListener('submit', onEventFormSubmit);
 }
 function toggleEventForm() {
+    // Nếu chưa mở khóa thì không cho mở form
+    if (!eventsUnlocked) {
+        alert('Vui lòng mở khóa phần sự kiện cá nhân trước (bấm nút 🔒 Mở khóa).');
+        return;
+    }
+
     const form = document.getElementById('event-form');
     const section = document.getElementById('personal-events');
     if (!form) return;
 
     form.classList.toggle('hidden');
 
-    // Khi mở form thì cuộn xuống khu vực sự kiện (hữu ích trên mobile)
     if (!form.classList.contains('hidden') && section) {
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -294,7 +337,8 @@ function init() {
     // Thiết lập form & tải sự kiện cá nhân
     setupEventForm();
     loadPersonalEvents();
-    
+    eventsUnlocked = localStorage.getItem('eventsUnlocked') === 'true';
+    updatePersonalEventsVisibility();
     // Debug: In ra kết quả để kiểm tra
     console.log('=== KIỂM TRA THUẬT TOÁN ÂM LỊCH ===');
     const testDate = new Date();
@@ -402,8 +446,12 @@ function renderMonthCalendar() {
         const lunarKey = `${lunar.day}/${lunar.month}`;
         const holiday = SOLAR_HOLIDAYS[solarKey] || LUNAR_HOLIDAYS[lunarKey];
 
+        // const dateKey = formatDateKeyFromParts(year, monthIndex, day);
+        // const dayEvents = personalEvents[dateKey] || [];
+
         const dateKey = formatDateKeyFromParts(year, monthIndex, day);
-        const dayEvents = personalEvents[dateKey] || [];
+        // Nếu chưa mở khóa, không cho hiển thị sự kiện cá nhân trên lịch tháng
+        const dayEvents = eventsUnlocked ? (personalEvents[dateKey] || []) : [];
 
         // Style nền / chữ
         let bgClass = isCurrentMonth ? 'bg-white' : 'bg-gray-50 opacity-60';

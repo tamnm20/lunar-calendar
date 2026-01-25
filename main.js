@@ -350,13 +350,13 @@ function renderOvertimeSummary() {
 
         // Nếu không có OT ngày nào, vẫn vẽ đủ trục ngày nhưng không có cột
         //const maxTotal = perDays.length ? Math.max(...perDays.map(d => d.total)) : 1;
-        const maxTotal = 11.5;
+        const maxTotal = 15;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const item = byDay.get(d) || null;
 
             const col = document.createElement('div');
-            col.className = 'flex-1 flex flex-col items-center justify-end min-w-[8px] h-full';
+            col.className = 'flex-1 flex flex-col items-center justify-end min-w-[15px] h-full';
 
             let barHtml = '';
             if (item) {

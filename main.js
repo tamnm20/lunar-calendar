@@ -44,41 +44,59 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv25LR8-BCAwT5
 
 // Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
 let personalEvents = {};
+
+// Lưu giờ tăng ca: { 'YYYY-MM-DD': { hours: number, fullDay: boolean } }
+let overtimeMap = {};
 // Cơ chế mở khóa phần sự kiện cá nhân (PIN cực đơn giản, chỉ chạy phía client)
 const PERSONAL_EVENTS_PIN = '2212';   // ĐỔI PIN TẠI ĐÂY
 let eventsUnlocked = false;           // trạng thái đã mở khóa hay chưa
 function updatePersonalEventsVisibility() {
     const content = document.getElementById('personal-events-content');
     const lockBtn = document.getElementById('events-lock-btn');
-    if (!content || !lockBtn) return;
+    const otPanel = document.getElementById('overtime-panel');
+    if (!lockBtn) return;
 
     if (eventsUnlocked) {
-        content.classList.remove('hidden');
+        if (content) content.classList.remove('hidden');
+        if (otPanel) otPanel.classList.remove('hidden');
         lockBtn.textContent = '🔓 Khóa lại';
     } else {
-        content.classList.add('hidden');
+        if (content) content.classList.add('hidden');
+        if (otPanel) otPanel.classList.add('hidden');
         lockBtn.textContent = '🔒 Mở khóa';
     }
 }
 function requestUnlockEvents() {
-    // Nếu đang mở rồi → cho phép khóa lại
+    // ĐANG MỞ → CHO KHÓA LẠI
     if (eventsUnlocked) {
         if (confirm('Bạn có muốn khóa lại phần sự kiện cá nhân?')) {
             eventsUnlocked = false;
             localStorage.removeItem('eventsUnlocked');
             updatePersonalEventsVisibility();
+
+            // Cập nhật ngay giao diện: ẩn chip sự kiện + OT, ẩn panel OT
+            renderMonthCalendar();
+            if (typeof renderOvertimeSummary === 'function') {
+                renderOvertimeSummary();
+            }
         }
         return;
     }
 
-    // Đang khóa → yêu cầu nhập PIN
+    // ĐANG KHÓA → YÊU CẦU NHẬP PIN
     const pin = prompt('Nhập mã PIN để mở phần sự kiện cá nhân:');
-    if (pin === null) return; // người dùng bấm Cancel
+    if (pin === null) return;
 
     if (pin === PERSONAL_EVENTS_PIN) {
         eventsUnlocked = true;
         localStorage.setItem('eventsUnlocked', 'true');
         updatePersonalEventsVisibility();
+
+        // Cập nhật ngay giao diện: hiện chip sự kiện + OT, hiện panel OT
+        renderMonthCalendar();
+        if (typeof renderOvertimeSummary === 'function') {
+            renderOvertimeSummary();
+        }
     } else {
         alert('Sai mã PIN, vui lòng thử lại.');
     }
@@ -136,6 +154,84 @@ function renderDayEvents() {
     });
 }
 
+function renderOvertimeSummary() {
+    const monthLabelEl = document.getElementById('ot-month-label');
+    const totalHoursEl = document.getElementById('ot-total-hours');
+    const totalBonusEl = document.getElementById('ot-total-bonus');
+    const avgEl        = document.getElementById('ot-average');
+    const maxDayEl     = document.getElementById('ot-max-day');
+    const daysCountEl  = document.getElementById('ot-days-count');
+    const listEl       = document.getElementById('ot-days-list');
+
+    if (!monthLabelEl || !totalHoursEl) return;
+
+    monthLabelEl.textContent = `${viewMonth + 1}/${viewYear}`;
+
+    let totalHours = 0;
+    let totalBonus = 0;
+    let daysWith   = 0;
+    let maxH       = 0;
+    let maxKey     = null;
+
+    for (const [key, ot] of Object.entries(overtimeMap)) {
+        const [y, m, d] = key.split('-').map(Number);
+        if (y !== viewYear || m - 1 !== viewMonth) continue;
+
+        const h = ot.hours || 0;
+        if (h <= 0) continue;
+
+        daysWith++;
+        totalHours += h;
+
+        if (ot.fullDay && h >= 2) {
+            totalBonus += 0.5; // bonus 0.5h nếu làm đủ 8h + tăng ca >=2
+        }
+
+        if (h > maxH) {
+            maxH = h;
+            maxKey = key;
+        }
+    }
+
+    const totalAll = totalHours + totalBonus;
+
+    totalHoursEl.textContent = `${totalHours.toFixed(1)}h (tất cả: ${totalAll.toFixed(1)}h)`;
+    totalBonusEl.textContent = `${totalBonus.toFixed(1)}h`;
+    daysCountEl.textContent  = daysWith;
+
+    avgEl.textContent = daysWith ? `${(totalAll / daysWith).toFixed(1)}h` : '0h';
+
+    if (maxKey) {
+        const [y, m, d] = maxKey.split('-').map(Number);
+        maxDayEl.textContent = `${d}/${m} – ${maxH}h`;
+    } else {
+        maxDayEl.textContent = '—';
+    }
+
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    for (const [key, ot] of Object.entries(overtimeMap)) {
+        const [y, m, d] = key.split('-').map(Number);
+        if (y !== viewYear || m - 1 !== viewMonth) continue;
+
+        const h = ot.hours || 0;
+        if (h <= 0) continue;
+
+        const bonus = ot.fullDay && h > 0 ? 0.5 : 0;
+        const totalH = h + bonus;
+
+        let color = 'bg-sky-100 text-sky-700';    // 1-2h: vàng
+        if (h >= 3 && h <= 4) color = 'bg-yellow-100 text-yellow-700'; // 3-4h: vàng
+        if (h >= 5)          color = 'bg-orange-100 text-orange-700';  // 5h+: cam
+
+        const div = document.createElement('div');
+        div.className = `px-2 py-1 rounded-full ${color}`;
+        div.textContent = `${d}/${m}: ${h}h` + (bonus ? ` (+${bonus}h bonus) = ${totalH.toFixed(1)}h` : '');
+        listEl.appendChild(div);
+    }
+}
+
 // Gắn submit handler cho form thêm sự kiện
 function setupEventForm() {
     const form = document.getElementById('event-form');
@@ -160,17 +256,48 @@ function toggleEventForm() {
     }
 }
 // Chuyển date từ server thành key YYYY-MM-DD theo giờ địa phương
+// function getEventDateKey(ev) {
+//     if (!ev || !ev.date) return null;
+
+//     // Nếu server trả chuỗi ISO: "2025-12-17T17:00:00.000Z"
+//     if (typeof ev.date === 'string') {
+//         const d = new Date(ev.date);
+//         if (!isNaN(d.getTime())) {
+//             // Đổi sang ngày local rồi format "YYYY-MM-DD"
+//             return formatDateKey(d);
+//         }
+//         // Fallback: lấy 10 kí tự đầu "YYYY-MM-DD"
+//         return ev.date.slice(0, 10);
+//     }
+
+//     // Nếu (hiếm) là số timestamp
+//     if (typeof ev.date === 'number') {
+//         const d = new Date(ev.date);
+//         if (!isNaN(d.getTime())) {
+//             return formatDateKey(d);
+//         }
+//     }
+
+//     return null;
+// }
 function getEventDateKey(ev) {
     if (!ev || !ev.date) return null;
 
-    // Nếu server trả chuỗi ISO: "2025-12-17T17:00:00.000Z"
+    // Nếu là Date object (từ Google Sheet)
+    if (ev.date instanceof Date) {
+        return formatDateKey(ev.date);
+    }
+
+    // Nếu server trả chuỗi ISO: "2025-12-17T17:00:00.000Z" hoặc "2025-12-18"
     if (typeof ev.date === 'string') {
+        // Nếu đã là dạng YYYY-MM-DD → dùng luôn
+        if (/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) {
+            return ev.date;
+        }
         const d = new Date(ev.date);
         if (!isNaN(d.getTime())) {
-            // Đổi sang ngày local rồi format "YYYY-MM-DD"
             return formatDateKey(d);
         }
-        // Fallback: lấy 10 kí tự đầu "YYYY-MM-DD"
         return ev.date.slice(0, 10);
     }
 
@@ -230,6 +357,45 @@ async function loadPersonalEvents() {
     }
 }
 
+async function loadOvertimeData() {
+    try {
+        const res = await fetch(APPS_SCRIPT_URL + '?type=overtime');
+        const text = await res.text();
+        console.log('Overtime GET status:', res.status);
+        console.log('Overtime raw response:', text);
+
+        if (!res.ok) return;
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.warn('Overtime JSON parse error:', e);
+            return;
+        }
+
+        if (!data || !Array.isArray(data.overtime)) {
+            console.warn('Định dạng overtime không hợp lệ', data);
+            return;
+        }
+
+        overtimeMap = {};
+        data.overtime.forEach(row => {
+            const key = getEventDateKey(row); // dùng lại hàm xử lý date ISO
+            if (!key) return;
+            overtimeMap[key] = {
+                hours: Number(row.hours) || 0,
+                fullDay: !!row.fullDay
+            };
+        });
+
+        renderMonthCalendar();
+        renderOvertimeSummary();
+    } catch (err) {
+        console.error('Không tải được dữ liệu tăng ca', err);
+    }
+}
+
 // Gửi sự kiện mới lên Apps Script
 async function addPersonalEvent(eventData) {
     if (!APPS_SCRIPT_URL) {
@@ -271,6 +437,69 @@ async function addPersonalEvent(eventData) {
         throw new Error(data.message || 'Lỗi khi lưu sự kiện trên Apps Script');
     }
     return data;
+}
+
+async function saveOvertime(dateKey, hours, fullDay) {
+    const payload = {
+        type: 'overtime',
+        date: dateKey,
+        hours,
+        fullDay
+    };
+
+    const body = new URLSearchParams();
+    body.append('data', JSON.stringify(payload));
+
+    const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body
+    });
+
+    const text = await res.text();
+    console.log('Overtime POST status:', res.status);
+    console.log('Overtime raw response:', text);
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const data = JSON.parse(text);
+    if (!data.success) {
+        throw new Error(data.message || 'Không lưu được tăng ca');
+    }
+    return data;
+}
+
+async function openOvertimeDialogForSelectedDay() {
+    if (!eventsUnlocked) {
+        alert('Vui lòng mở khóa phần sự kiện cá nhân trước (bấm nút 🔒 Mở khóa).');
+        return;
+    }
+    const dateKey = formatDateKey(selectedDate);
+    const current = overtimeMap[dateKey];
+
+    const defaultVal = current ? String(current.hours) : '';
+    const label = formatDateVi(selectedDate);
+
+    const input = prompt(`Nhập giờ tăng ca cho ngày ${label} (số giờ, ví dụ 2 hoặc 2.5):`, defaultVal);
+    if (input === null) return;
+
+    const hours = parseFloat(String(input).replace(',', '.'));
+    if (isNaN(hours) || hours < 0) {
+        alert('Giờ tăng ca phải là số >= 0');
+        return;
+    }
+
+    const fullDay = confirm('Bạn có làm đủ 8 giờ trong ngày này không?');
+
+    try {
+        await saveOvertime(dateKey, hours, fullDay);
+        overtimeMap[dateKey] = { hours, fullDay };
+        renderMonthCalendar();
+        renderOvertimeSummary();
+        alert('Đã lưu giờ tăng ca');
+    } catch (e) {
+        console.error(e);
+        alert('Không lưu được giờ tăng ca');
+    }
 }
 
 // Xử lý submit form thêm sự kiện
@@ -337,6 +566,7 @@ function init() {
     // Thiết lập form & tải sự kiện cá nhân
     setupEventForm();
     loadPersonalEvents();
+    loadOvertimeData();
     eventsUnlocked = localStorage.getItem('eventsUnlocked') === 'true';
     updatePersonalEventsVisibility();
     // Debug: In ra kết quả để kiểm tra
@@ -453,6 +683,8 @@ function renderMonthCalendar() {
         // Nếu chưa mở khóa, không cho hiển thị sự kiện cá nhân trên lịch tháng
         const dayEvents = eventsUnlocked ? (personalEvents[dateKey] || []) : [];
 
+        const ot = eventsUnlocked ? overtimeMap[dateKey] : null;
+
         // Style nền / chữ
         let bgClass = isCurrentMonth ? 'bg-white' : 'bg-gray-50 opacity-60';
         let borderClass = 'border border-gray-100';
@@ -514,6 +746,19 @@ function renderMonthCalendar() {
                     </div>
                 `;
             }
+        }
+        // Chip giờ tăng ca
+        if (ot && ot.hours > 0) {
+            const h = ot.hours;
+            let otColor = 'bg-yellow-100 text-yellow-700';          // 1-2h
+            if (h >= 3 && h <= 4) otColor = 'bg-yellow-100 text-yellow-700'; // 3-4h
+            if (h >= 5)           otColor = 'bg-orange-100 text-orange-700'; // 5h+
+
+            chipsHtml += `
+                <div class="mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-medium max-w-full truncate ${otColor}">
+                    ⏰ ${h}h
+                </div>
+            `;
         }
 
         return `
@@ -649,6 +894,7 @@ function changeMonth(delta) {
     }
     renderMonthCalendar();
     renderHolidayList();
+    renderOvertimeSummary();
 }
 
 /**
@@ -659,6 +905,7 @@ function onMonthYearChange() {
     viewYear = parseInt(document.getElementById('year-select').value);
     renderMonthCalendar();
     renderHolidayList();
+    renderOvertimeSummary();
 }
 
 /**
@@ -671,6 +918,7 @@ function goToToday() {
     updateDayCalendar();
     renderMonthCalendar();
     renderHolidayList();
+    renderOvertimeSummary();
 }
 
 /**

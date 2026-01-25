@@ -240,6 +240,45 @@
                 </div>
             </div>
         </section>
+        <!-- Thống kê giờ tăng ca -->
+        <section id="overtime-panel" class="mt-4 bg-white rounded-2xl shadow-lg p-4 hidden">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-md font-semibold text-gray-700">
+                    ⏰ Giờ tăng ca tháng <span id="ot-month-label"></span>
+                </h3>
+                <button type="button"
+                        onclick="openOvertimeDialogForSelectedDay()"
+                        class="text-xs px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">
+                    + Nhập giờ tăng ca (ngày đang chọn)
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                    <div class="text-xs text-gray-500 uppercase">Tổng giờ tăng ca</div>
+                    <div class="text-lg font-semibold" id="ot-total-hours">0h</div>
+                    <div class="text-xs text-gray-500">
+                        Bonus: <span id="ot-total-bonus">0h</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-500 uppercase">Trung bình / ngày có tăng ca</div>
+                    <div class="text-lg font-semibold" id="ot-average">0h</div>
+                    <div class="text-xs text-gray-500">
+                        Ngày nhiều nhất: <span id="ot-max-day">—</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-500 uppercase">Số ngày tăng ca</div>
+                    <div class="text-lg font-semibold" id="ot-days-count">0</div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <div class="text-xs font-medium text-gray-600 mb-1">Danh sách ngày tăng ca</div>
+                <div id="ot-days-list" class="flex flex-wrap gap-2 text-xs"></div>
+            </div>
+        </section>
         <!-- Sự kiện cá nhân (danh sách + form thêm) -->
         <section id="personal-events" class="mt-6 bg-white rounded-2xl shadow-lg p-6">
             <div class="flex items-center justify-between mb-3">

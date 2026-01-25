@@ -1,4 +1,4 @@
-const CACHE_NAME = "calendar-pwa-v1";
+const CACHE_NAME = "lunar-calendar1";
 const FILES_TO_CACHE = [
     "./",
     "./index.html",

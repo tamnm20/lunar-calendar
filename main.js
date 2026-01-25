@@ -324,7 +324,7 @@ function renderOvertimeSummary() {
             div.className = `px-2 py-1 rounded-full ${color}`;
             div.textContent =
                 `${day}/${month}: ${hours}h` +
-                (bonus ? ` (+${bonus}h bonus) = ${total.toFixed(1)}h` : '');
+                (bonus ? ` (+${bonus}h) = ${total.toFixed(1)}h` : '');
             listEl.appendChild(div);
         });
 

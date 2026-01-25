@@ -154,6 +154,84 @@ function renderDayEvents() {
     });
 }
 
+// function renderOvertimeSummary() {
+//     const monthLabelEl = document.getElementById('ot-month-label');
+//     const totalHoursEl = document.getElementById('ot-total-hours');
+//     const totalBonusEl = document.getElementById('ot-total-bonus');
+//     const avgEl        = document.getElementById('ot-average');
+//     const maxDayEl     = document.getElementById('ot-max-day');
+//     const daysCountEl  = document.getElementById('ot-days-count');
+//     const listEl       = document.getElementById('ot-days-list');
+
+//     if (!monthLabelEl || !totalHoursEl) return;
+
+//     monthLabelEl.textContent = `${viewMonth + 1}/${viewYear}`;
+
+//     let totalHours = 0;
+//     let totalBonus = 0;
+//     let daysWith   = 0;
+//     let maxH       = 0;
+//     let maxKey     = null;
+
+//     for (const [key, ot] of Object.entries(overtimeMap)) {
+//         const [y, m, d] = key.split('-').map(Number);
+//         if (y !== viewYear || m - 1 !== viewMonth) continue;
+
+//         const h = ot.hours || 0;
+//         if (h <= 0) continue;
+
+//         daysWith++;
+//         totalHours += h;
+
+//         if (ot.fullDay && h >= 2) {
+//             totalBonus += 0.5; // bonus 0.5h nếu làm đủ 8h + tăng ca >=2
+//         }
+
+//         if (h > maxH) {
+//             maxH = h;
+//             maxKey = key;
+//         }
+//     }
+
+//     const totalAll = totalHours + totalBonus;
+
+//     totalHoursEl.textContent = `${totalHours.toFixed(1)}h (tất cả: ${totalAll.toFixed(1)}h)`;
+//     totalBonusEl.textContent = `${totalBonus.toFixed(1)}h`;
+//     daysCountEl.textContent  = daysWith;
+
+//     avgEl.textContent = daysWith ? `${(totalAll / daysWith).toFixed(1)}h` : '0h';
+
+//     if (maxKey) {
+//         const [y, m, d] = maxKey.split('-').map(Number);
+//         maxDayEl.textContent = `${d}/${m} – ${maxH}h`;
+//     } else {
+//         maxDayEl.textContent = '—';
+//     }
+
+//     if (!listEl) return;
+//     listEl.innerHTML = '';
+
+//     for (const [key, ot] of Object.entries(overtimeMap)) {
+//         const [y, m, d] = key.split('-').map(Number);
+//         if (y !== viewYear || m - 1 !== viewMonth) continue;
+
+//         const h = ot.hours || 0;
+//         if (h <= 0) continue;
+
+//         const bonus = ot.fullDay && h > 0 ? 0.5 : 0;
+//         const totalH = h + bonus;
+
+//         let color = 'bg-sky-100 text-sky-700';    // 1-2h: vàng
+//         if (h >= 3 && h <= 4) color = 'bg-yellow-100 text-yellow-700'; // 3-4h: vàng
+//         if (h >= 5)          color = 'bg-orange-100 text-orange-700';  // 5h+: cam
+
+//         const div = document.createElement('div');
+//         div.className = `px-2 py-1 rounded-full ${color}`;
+//         div.textContent = `${d}/${m}: ${h}h` + (bonus ? ` (+${bonus}h bonus) = ${totalH.toFixed(1)}h` : '');
+//         listEl.appendChild(div);
+//     }
+// }
+
 function renderOvertimeSummary() {
     const monthLabelEl = document.getElementById('ot-month-label');
     const totalHoursEl = document.getElementById('ot-total-hours');
@@ -162,54 +240,21 @@ function renderOvertimeSummary() {
     const maxDayEl     = document.getElementById('ot-max-day');
     const daysCountEl  = document.getElementById('ot-days-count');
     const listEl       = document.getElementById('ot-days-list');
+    const chartEl      = document.getElementById('ot-chart');
 
-    if (!monthLabelEl || !totalHoursEl) return;
+    // Nếu panel chưa tồn tại (ví dụ HTML chưa thêm), thì bỏ qua
+    if (!monthLabelEl) return;
 
     monthLabelEl.textContent = `${viewMonth + 1}/${viewYear}`;
 
     let totalHours = 0;
     let totalBonus = 0;
     let daysWith   = 0;
-    let maxH       = 0;
+    let maxTotalH  = 0;
     let maxKey     = null;
 
-    for (const [key, ot] of Object.entries(overtimeMap)) {
-        const [y, m, d] = key.split('-').map(Number);
-        if (y !== viewYear || m - 1 !== viewMonth) continue;
-
-        const h = ot.hours || 0;
-        if (h <= 0) continue;
-
-        daysWith++;
-        totalHours += h;
-
-        if (ot.fullDay && h >= 2) {
-            totalBonus += 0.5; // bonus 0.5h nếu làm đủ 8h + tăng ca >=2
-        }
-
-        if (h > maxH) {
-            maxH = h;
-            maxKey = key;
-        }
-    }
-
-    const totalAll = totalHours + totalBonus;
-
-    totalHoursEl.textContent = `${totalHours.toFixed(1)}h (tất cả: ${totalAll.toFixed(1)}h)`;
-    totalBonusEl.textContent = `${totalBonus.toFixed(1)}h`;
-    daysCountEl.textContent  = daysWith;
-
-    avgEl.textContent = daysWith ? `${(totalAll / daysWith).toFixed(1)}h` : '0h';
-
-    if (maxKey) {
-        const [y, m, d] = maxKey.split('-').map(Number);
-        maxDayEl.textContent = `${d}/${m} – ${maxH}h`;
-    } else {
-        maxDayEl.textContent = '—';
-    }
-
-    if (!listEl) return;
-    listEl.innerHTML = '';
+    // Dùng mảng để phục vụ chart + danh sách
+    const perDays = []; // { key, day, month, hours, bonus, total }
 
     for (const [key, ot] of Object.entries(overtimeMap)) {
         const [y, m, d] = key.split('-').map(Number);
@@ -221,14 +266,129 @@ function renderOvertimeSummary() {
         const bonus = ot.fullDay && h > 0 ? 0.5 : 0;
         const totalH = h + bonus;
 
-        let color = 'bg-sky-100 text-sky-700';    // 1-2h: vàng
-        if (h >= 3 && h <= 4) color = 'bg-yellow-100 text-yellow-700'; // 3-4h: vàng
-        if (h >= 5)          color = 'bg-orange-100 text-orange-700';  // 5h+: cam
+        daysWith++;
+        totalHours += h;
+        totalBonus += bonus;
 
-        const div = document.createElement('div');
-        div.className = `px-2 py-1 rounded-full ${color}`;
-        div.textContent = `${d}/${m}: ${h}h` + (bonus ? ` (+${bonus}h bonus) = ${totalH.toFixed(1)}h` : '');
-        listEl.appendChild(div);
+        if (totalH > maxTotalH) {
+            maxTotalH = totalH;
+            maxKey = key;
+        }
+
+        perDays.push({
+            key,
+            day: d,
+            month: m,
+            hours: h,
+            bonus,
+            total: totalH
+        });
+    }
+
+    // Sắp xếp ngày tăng dần để biểu đồ nhìn dễ hơn
+    perDays.sort((a, b) => a.day - b.day);
+
+    const totalAll = totalHours + totalBonus;
+
+    if (totalHoursEl) {
+        totalHoursEl.textContent = `${totalHours.toFixed(1)}h (tất cả: ${totalAll.toFixed(1)}h)`;
+    }
+    if (totalBonusEl) {
+        totalBonusEl.textContent = `${totalBonus.toFixed(1)}h`;
+    }
+    if (daysCountEl) {
+        daysCountEl.textContent = daysWith;
+    }
+    if (avgEl) {
+        avgEl.textContent = daysWith ? `${(totalAll / daysWith).toFixed(1)}h` : '0h';
+    }
+    if (maxDayEl) {
+        if (maxKey) {
+            const [y, m, d] = maxKey.split('-').map(Number);
+            maxDayEl.textContent = `${d}/${m} – ${maxTotalH.toFixed(1)}h`;
+        } else {
+            maxDayEl.textContent = '—';
+        }
+    }
+
+    // Danh sách ngày tăng ca
+    if (listEl) {
+        listEl.innerHTML = '';
+        perDays.forEach(item => {
+            const { day, month, hours, bonus, total } = item;
+            let color = 'bg-sky-100 text-sky-700';    // 1-2h
+            if (hours >= 3 && hours <= 4) color = 'bg-yellow-100 text-yellow-700';
+            if (hours >= 5)               color = 'bg-orange-100 text-orange-700';
+
+            const div = document.createElement('div');
+            div.className = `px-2 py-1 rounded-full ${color}`;
+            div.textContent =
+                `${day}/${month}: ${hours}h` +
+                (bonus ? ` (+${bonus}h bonus) = ${total.toFixed(1)}h` : '');
+            listEl.appendChild(div);
+        });
+
+        if (!perDays.length) {
+            const div = document.createElement('div');
+            div.className = 'text-xs text-gray-400';
+            div.textContent = 'Chưa có dữ liệu tăng ca trong tháng này';
+            listEl.appendChild(div);
+        }
+    }
+    // VẼ BIỂU ĐỒ CỘT BẰNG DIV
+    if (chartEl) {
+        chartEl.innerHTML = '';
+
+        // Số ngày trong tháng đang xem
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+        // Map day -> dữ liệu OT trong tháng (để tra nhanh)
+        const byDay = new Map();
+        perDays.forEach(item => {
+            byDay.set(item.day, item); // item.day là số ngày trong tháng
+        });
+
+        // Nếu không có OT ngày nào, vẫn vẽ đủ trục ngày nhưng không có cột
+        //const maxTotal = perDays.length ? Math.max(...perDays.map(d => d.total)) : 1;
+        const maxTotal = 11.5;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const item = byDay.get(d) || null;
+
+            const col = document.createElement('div');
+            col.className = 'flex-1 flex flex-col items-center justify-end min-w-[8px] h-full';
+
+            let barHtml = '';
+            if (item) {
+                const { hours, total } = item;
+
+                // Chiều cao cột theo phần trăm (tối thiểu 5%)
+                const heightPercent = Math.max(5, (total / maxTotal) * 100);
+
+                // Màu cột theo số giờ tăng ca (KHÔNG tính bonus)
+                let colorClass = 'bg-sky-300';           // 1–2h
+                if (hours >= 3 && hours <= 4) colorClass = 'bg-yellow-300';
+                if (hours >= 5)               colorClass = 'bg-orange-300';
+
+                barHtml = `
+                    <div class="w-full ${colorClass} rounded-t-[4px]"
+                        style="height:${heightPercent}%;"></div>
+                `;
+            } else {
+                // Ngày không có OT: không vẽ cột (height = 0)
+                barHtml = `
+                    <div class="w-full rounded-t-full"
+                        style="height:0%;"></div>
+                `;
+            }
+
+            col.innerHTML = `
+                ${barHtml}
+                <div class="mt-0.5 text-[9px] text-gray-400">${d}</div>
+            `;
+
+            chartEl.appendChild(col);
+        }
     }
 }
 

@@ -154,84 +154,6 @@ function renderDayEvents() {
     });
 }
 
-// function renderOvertimeSummary() {
-//     const monthLabelEl = document.getElementById('ot-month-label');
-//     const totalHoursEl = document.getElementById('ot-total-hours');
-//     const totalBonusEl = document.getElementById('ot-total-bonus');
-//     const avgEl        = document.getElementById('ot-average');
-//     const maxDayEl     = document.getElementById('ot-max-day');
-//     const daysCountEl  = document.getElementById('ot-days-count');
-//     const listEl       = document.getElementById('ot-days-list');
-
-//     if (!monthLabelEl || !totalHoursEl) return;
-
-//     monthLabelEl.textContent = `${viewMonth + 1}/${viewYear}`;
-
-//     let totalHours = 0;
-//     let totalBonus = 0;
-//     let daysWith   = 0;
-//     let maxH       = 0;
-//     let maxKey     = null;
-
-//     for (const [key, ot] of Object.entries(overtimeMap)) {
-//         const [y, m, d] = key.split('-').map(Number);
-//         if (y !== viewYear || m - 1 !== viewMonth) continue;
-
-//         const h = ot.hours || 0;
-//         if (h <= 0) continue;
-
-//         daysWith++;
-//         totalHours += h;
-
-//         if (ot.fullDay && h >= 2) {
-//             totalBonus += 0.5; // bonus 0.5h nếu làm đủ 8h + tăng ca >=2
-//         }
-
-//         if (h > maxH) {
-//             maxH = h;
-//             maxKey = key;
-//         }
-//     }
-
-//     const totalAll = totalHours + totalBonus;
-
-//     totalHoursEl.textContent = `${totalHours.toFixed(1)}h (tất cả: ${totalAll.toFixed(1)}h)`;
-//     totalBonusEl.textContent = `${totalBonus.toFixed(1)}h`;
-//     daysCountEl.textContent  = daysWith;
-
-//     avgEl.textContent = daysWith ? `${(totalAll / daysWith).toFixed(1)}h` : '0h';
-
-//     if (maxKey) {
-//         const [y, m, d] = maxKey.split('-').map(Number);
-//         maxDayEl.textContent = `${d}/${m} – ${maxH}h`;
-//     } else {
-//         maxDayEl.textContent = '—';
-//     }
-
-//     if (!listEl) return;
-//     listEl.innerHTML = '';
-
-//     for (const [key, ot] of Object.entries(overtimeMap)) {
-//         const [y, m, d] = key.split('-').map(Number);
-//         if (y !== viewYear || m - 1 !== viewMonth) continue;
-
-//         const h = ot.hours || 0;
-//         if (h <= 0) continue;
-
-//         const bonus = ot.fullDay && h > 0 ? 0.5 : 0;
-//         const totalH = h + bonus;
-
-//         let color = 'bg-sky-100 text-sky-700';    // 1-2h: vàng
-//         if (h >= 3 && h <= 4) color = 'bg-yellow-100 text-yellow-700'; // 3-4h: vàng
-//         if (h >= 5)          color = 'bg-orange-100 text-orange-700';  // 5h+: cam
-
-//         const div = document.createElement('div');
-//         div.className = `px-2 py-1 rounded-full ${color}`;
-//         div.textContent = `${d}/${m}: ${h}h` + (bonus ? ` (+${bonus}h bonus) = ${totalH.toFixed(1)}h` : '');
-//         listEl.appendChild(div);
-//     }
-// }
-
 function renderOvertimeSummary() {
     const monthLabelEl = document.getElementById('ot-month-label');
     const totalHoursEl = document.getElementById('ot-total-hours');
@@ -251,6 +173,10 @@ function renderOvertimeSummary() {
     let totalBonus = 0;
     let daysWith   = 0;
     let maxTotalH  = 0;
+    let totalWeekdayHours = 0;
+    let totalWeekdayBonus = 0;
+    let totalSundayHours  = 0;
+    let totalSundayBonus  = 0;
     let maxKey     = null;
 
     // Dùng mảng để phục vụ chart + danh sách
@@ -265,6 +191,18 @@ function renderOvertimeSummary() {
 
         const bonus = ot.fullDay && h > 0 ? 0.5 : 0;
         const totalH = h + bonus;
+
+        // Phân loại ngày thường / Chủ nhật
+        const dateObj = new Date(y, m - 1, d);
+        const isSunday = dateObj.getDay() === 0; // 0 = Chủ nhật
+
+        if (isSunday) {
+            totalSundayHours  += h;
+            totalSundayBonus  += bonus;
+        } else {
+            totalWeekdayHours += h;
+            totalWeekdayBonus += bonus;
+        }
 
         daysWith++;
         totalHours += h;
@@ -301,6 +239,26 @@ function renderOvertimeSummary() {
     }
     if (avgEl) {
         avgEl.textContent = daysWith ? `${(totalAll / daysWith).toFixed(1)}h` : '0h';
+    }
+    // Tổng theo ngày thường / Chủ nhật
+    const weekdayHoursEl = document.getElementById('ot-weekday-hours');
+    const weekdayTotalEl = document.getElementById('ot-weekday-total');
+    const sundayHoursEl  = document.getElementById('ot-sunday-hours');
+    const sundayTotalEl  = document.getElementById('ot-sunday-total');
+
+    if (weekdayHoursEl) {
+        weekdayHoursEl.textContent = `${totalWeekdayHours.toFixed(1)}h`;
+    }
+    if (weekdayTotalEl) {
+        // chỉ hiển thị bonus ngày thường
+        weekdayTotalEl.textContent = `${totalWeekdayBonus.toFixed(1)}h`;
+    }
+    if (sundayHoursEl) {
+        sundayHoursEl.textContent = `${totalSundayHours.toFixed(1)}h`;
+    }
+    if (sundayTotalEl) {
+        // chỉ hiển thị bonus chủ nhật
+        sundayTotalEl.textContent = `${totalSundayBonus.toFixed(1)}h`;
     }
     if (maxDayEl) {
         if (maxKey) {
@@ -415,31 +373,7 @@ function toggleEventForm() {
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
-// Chuyển date từ server thành key YYYY-MM-DD theo giờ địa phương
-// function getEventDateKey(ev) {
-//     if (!ev || !ev.date) return null;
 
-//     // Nếu server trả chuỗi ISO: "2025-12-17T17:00:00.000Z"
-//     if (typeof ev.date === 'string') {
-//         const d = new Date(ev.date);
-//         if (!isNaN(d.getTime())) {
-//             // Đổi sang ngày local rồi format "YYYY-MM-DD"
-//             return formatDateKey(d);
-//         }
-//         // Fallback: lấy 10 kí tự đầu "YYYY-MM-DD"
-//         return ev.date.slice(0, 10);
-//     }
-
-//     // Nếu (hiếm) là số timestamp
-//     if (typeof ev.date === 'number') {
-//         const d = new Date(ev.date);
-//         if (!isNaN(d.getTime())) {
-//             return formatDateKey(d);
-//         }
-//     }
-
-//     return null;
-// }
 function getEventDateKey(ev) {
     if (!ev || !ev.date) return null;
 
@@ -910,7 +844,7 @@ function renderMonthCalendar() {
         // Chip giờ tăng ca
         if (ot && ot.hours > 0) {
             const h = ot.hours;
-            let otColor = 'bg-yellow-100 text-yellow-700';          // 1-2h
+            let otColor = 'bg-sky-100 text-sky-700';          // 1-2h
             if (h >= 3 && h <= 4) otColor = 'bg-yellow-100 text-yellow-700'; // 3-4h
             if (h >= 5)           otColor = 'bg-orange-100 text-orange-700'; // 5h+
 

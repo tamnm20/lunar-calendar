@@ -40,7 +40,7 @@ const LUNAR_HOLIDAYS = {
 // Các ngày trong tuần
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 // URL Web App của Google Apps Script (sẽ tạo ở bước 3.3)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz0po-RKYF6B5qyF1yOnXlEvIMaQO7k5zXXidPSyy38KnEmIDqKoq3Pfg21BXBnT_mf/exec'; // thay bằng URL Web App thật
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyNBVlh_0a33TYF7c_UODwO4m9mQd4HZQtxnMNMvKTQgKzp1-2Q7Qmb1rcLBEzS1W8dww/exec'; // thay bằng URL Web App thật
 // Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
 let personalEvents = {};
 

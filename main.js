@@ -40,8 +40,7 @@ const LUNAR_HOLIDAYS = {
 // Các ngày trong tuần
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 // URL Web App của Google Apps Script (sẽ tạo ở bước 3.3)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxv25LR8-BCAwT5Qi8-xVyOcHEwHSs7-mxfaAzyRnN_q_Y4Owh-4E936TTd4r0RKiCUIA/exec'; // thay bằng URL Web App thật
-
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz0po-RKYF6B5qyF1yOnXlEvIMaQO7k5zXXidPSyy38KnEmIDqKoq3Pfg21BXBnT_mf/exec'; // thay bằng URL Web App thật
 // Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
 let personalEvents = {};
 
@@ -66,39 +65,45 @@ function updatePersonalEventsVisibility() {
         lockBtn.textContent = '🔒 Mở khóa';
     }
 }
-function requestUnlockEvents() {
-    // ĐANG MỞ → CHO KHÓA LẠI
+// Đổi hàm thành async vì cần đợi kết quả từ server
+async function requestUnlockEvents() {
     if (eventsUnlocked) {
         if (confirm('Bạn có muốn khóa lại phần sự kiện cá nhân?')) {
             eventsUnlocked = false;
-            localStorage.removeItem('eventsUnlocked');
+            localStorage.removeItem('savedPin'); // Xóa PIN khỏi bộ nhớ
             updatePersonalEventsVisibility();
-
-            // Cập nhật ngay giao diện: ẩn chip sự kiện + OT, ẩn panel OT
             renderMonthCalendar();
-            if (typeof renderOvertimeSummary === 'function') {
-                renderOvertimeSummary();
-            }
+            if (typeof renderOvertimeSummary === 'function') renderOvertimeSummary();
         }
         return;
     }
 
-    // ĐANG KHÓA → YÊU CẦU NHẬP PIN
-    const pin = prompt('Nhập mã PIN để mở phần sự kiện cá nhân:');
-    if (pin === null) return;
+    const pin = prompt('Nhập mã PIN để tải phần sự kiện cá nhân:');
+    if (!pin) return;
 
-    if (pin === PERSONAL_EVENTS_PIN) {
-        eventsUnlocked = true;
-        localStorage.setItem('eventsUnlocked', 'true');
-        updatePersonalEventsVisibility();
+    try {
+        // Gửi mã PIN lên server để kiểm tra
+        const payload = { type: 'verify_pin', pin: pin };
+        const body = new URLSearchParams();
+        body.append('data', JSON.stringify(payload));
 
-        // Cập nhật ngay giao diện: hiện chip sự kiện + OT, hiện panel OT
-        renderMonthCalendar();
-        if (typeof renderOvertimeSummary === 'function') {
-            renderOvertimeSummary();
+        const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', body });
+        const data = await res.json();
+
+        if (data.success) {
+            eventsUnlocked = true;
+            localStorage.setItem('savedPin', pin); // Lưu lại PIN hợp lệ
+            updatePersonalEventsVisibility();
+            
+            // Lấy dữ liệu từ server bằng PIN này
+            await loadPersonalEvents();
+            await loadOvertimeData();
+        } else {
+            alert('Sai mã PIN. Vui lòng thử lại.');
         }
-    } else {
-        alert('Sai mã PIN, vui lòng thử lại.');
+    } catch (err) {
+        alert('Lỗi kết nối tới máy chủ.');
+        console.error(err);
     }
 }
 // ========== GLOBAL VARIABLES ==========
@@ -189,7 +194,7 @@ function renderOvertimeSummary() {
         const h = ot.hours || 0;
         if (h <= 0) continue;
 
-        const bonus = ot.fullDay && h > 0 ? 0.5 : 0;
+        const bonus = ot.fullDay && h > 2 ? 0.5 : 0;
         const totalH = h + bonus;
 
         // Phân loại ngày thường / Chủ nhật
@@ -407,13 +412,12 @@ function getEventDateKey(ev) {
 }
 // Tải toàn bộ sự kiện từ Google Sheet qua Apps Script
 async function loadPersonalEvents() {
-    if (!APPS_SCRIPT_URL) {
-        console.warn('Chưa cấu hình APPS_SCRIPT_URL, bỏ qua tải sự kiện cá nhân.');
-        return;
-    }
+    const savedPin = localStorage.getItem('savedPin');
+    if (!APPS_SCRIPT_URL || !savedPin) return; // Nếu chưa mở khóa thì không tải
 
     try {
-        const res = await fetch(APPS_SCRIPT_URL);
+        // Thêm tham số pin vào URL
+        const res = await fetch(`${APPS_SCRIPT_URL}?events&pin=${savedPin}`);
         const text = await res.text();
         console.log('Apps Script GET status:', res.status);
         console.log('Apps Script GET raw response:', text);
@@ -452,8 +456,11 @@ async function loadPersonalEvents() {
 }
 
 async function loadOvertimeData() {
+    const savedPin = localStorage.getItem('savedPin');
+    if (!APPS_SCRIPT_URL || !savedPin) return; // Nếu chưa mở khóa thì không tải
     try {
-        const res = await fetch(APPS_SCRIPT_URL + '?type=overtime');
+        // Thêm tham số pin vào URL
+        const res = await fetch(`${APPS_SCRIPT_URL}?type=overtime&pin=${savedPin}`);
         const text = await res.text();
         console.log('Overtime GET status:', res.status);
         console.log('Overtime raw response:', text);
@@ -495,7 +502,9 @@ async function addPersonalEvent(eventData) {
     if (!APPS_SCRIPT_URL) {
         throw new Error('APPS_SCRIPT_URL chưa được cấu hình trong main.js');
     }
-
+    const savedPin = localStorage.getItem('savedPin');
+    // Gắn thêm pin vào payload gửi đi
+    eventData.pin = savedPin;
     // Gửi dưới dạng form-urlencoded, param "data" chứa JSON
     const body = new URLSearchParams();
     body.append('data', JSON.stringify(eventData));
@@ -534,11 +543,13 @@ async function addPersonalEvent(eventData) {
 }
 
 async function saveOvertime(dateKey, hours, fullDay) {
+    const savedPin = localStorage.getItem('savedPin');
     const payload = {
         type: 'overtime',
         date: dateKey,
-        hours,
-        fullDay
+        hours: hours,
+        fullDay: fullDay,
+        pin: savedPin // Gắn mã pin
     };
 
     const body = new URLSearchParams();

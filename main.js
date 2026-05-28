@@ -65,6 +65,40 @@ function updatePersonalEventsVisibility() {
         lockBtn.textContent = '🔒 Mở khóa';
     }
 }
+/**
+ * Hàm hiển thị Modal nhập PIN dưới dạng Promise bất đồng bộ
+ */
+function showPinPrompt() {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('pin-modal');
+        const input = document.getElementById('pin-input');
+        const form = document.getElementById('pin-form');
+        
+        if (!modal || !input || !form) {
+            // Phòng hờ nếu quên chưa thêm HTML ở Bước 1, hệ thống tự động dùng prompt cũ
+            resolve(prompt('Nhập mã PIN để tải phần sự kiện cá nhân:'));
+            return;
+        }
+
+        // Làm sạch ô nhập cũ và hiển thị modal lên màn hình
+        input.value = '';
+        modal.classList.remove('hidden');
+        input.focus();
+
+        // Khi người dùng nhấn nút "Xác nhận" (hoặc nhấn Enter)
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            modal.classList.add('hidden');
+            resolve(input.value); // Trả về mã PIN đã nhập
+        };
+
+        // Khi người dùng nhấn nút "Hủy"
+        window.closePinModal = function() {
+            modal.classList.add('hidden');
+            resolve(null); // Trả về null giống như bấm Cancel của prompt mặc định
+        };
+    });
+}
 // Đổi hàm thành async vì cần đợi kết quả từ server
 async function requestUnlockEvents() {
     if (eventsUnlocked) {
@@ -78,7 +112,8 @@ async function requestUnlockEvents() {
         return;
     }
 
-    const pin = prompt('Nhập mã PIN để tải phần sự kiện cá nhân:');
+    //const pin = prompt('Nhập mã PIN để tải phần sự kiện cá nhân:');
+    const pin = await showPinPrompt();
     if (!pin) return;
 
     try {
@@ -87,14 +122,14 @@ async function requestUnlockEvents() {
         const body = new URLSearchParams();
         body.append('data', JSON.stringify(payload));
 
-        const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', body, redirect: "follow" });
+        const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', mode: 'cors', body, follow: 'redirect' });
         const data = await res.json();
 
         if (data.success) {
             eventsUnlocked = true;
             localStorage.setItem('savedPin', pin); // Lưu lại PIN hợp lệ
             updatePersonalEventsVisibility();
-            
+
             // Lấy dữ liệu từ server bằng PIN này
             await loadPersonalEvents();
             await loadOvertimeData();
@@ -163,11 +198,11 @@ function renderOvertimeSummary() {
     const monthLabelEl = document.getElementById('ot-month-label');
     const totalHoursEl = document.getElementById('ot-total-hours');
     const totalBonusEl = document.getElementById('ot-total-bonus');
-    const avgEl        = document.getElementById('ot-average');
-    const maxDayEl     = document.getElementById('ot-max-day');
-    const daysCountEl  = document.getElementById('ot-days-count');
-    const listEl       = document.getElementById('ot-days-list');
-    const chartEl      = document.getElementById('ot-chart');
+    const avgEl = document.getElementById('ot-average');
+    const maxDayEl = document.getElementById('ot-max-day');
+    const daysCountEl = document.getElementById('ot-days-count');
+    const listEl = document.getElementById('ot-days-list');
+    const chartEl = document.getElementById('ot-chart');
 
     // Nếu panel chưa tồn tại (ví dụ HTML chưa thêm), thì bỏ qua
     if (!monthLabelEl) return;
@@ -176,13 +211,13 @@ function renderOvertimeSummary() {
 
     let totalHours = 0;
     let totalBonus = 0;
-    let daysWith   = 0;
-    let maxTotalH  = 0;
+    let daysWith = 0;
+    let maxTotalH = 0;
     let totalWeekdayHours = 0;
     let totalWeekdayBonus = 0;
-    let totalSundayHours  = 0;
-    let totalSundayBonus  = 0;
-    let maxKey     = null;
+    let totalSundayHours = 0;
+    let totalSundayBonus = 0;
+    let maxKey = null;
 
     // Dùng mảng để phục vụ chart + danh sách
     const perDays = []; // { key, day, month, hours, bonus, total }
@@ -202,8 +237,8 @@ function renderOvertimeSummary() {
         const isSunday = dateObj.getDay() === 0; // 0 = Chủ nhật
 
         if (isSunday) {
-            totalSundayHours  += h;
-            totalSundayBonus  += bonus;
+            totalSundayHours += h;
+            totalSundayBonus += bonus;
         } else {
             totalWeekdayHours += h;
             totalWeekdayBonus += bonus;
@@ -248,8 +283,8 @@ function renderOvertimeSummary() {
     // Tổng theo ngày thường / Chủ nhật
     const weekdayHoursEl = document.getElementById('ot-weekday-hours');
     const weekdayTotalEl = document.getElementById('ot-weekday-total');
-    const sundayHoursEl  = document.getElementById('ot-sunday-hours');
-    const sundayTotalEl  = document.getElementById('ot-sunday-total');
+    const sundayHoursEl = document.getElementById('ot-sunday-hours');
+    const sundayTotalEl = document.getElementById('ot-sunday-total');
 
     if (weekdayHoursEl) {
         weekdayHoursEl.textContent = `${totalWeekdayHours.toFixed(1)}h`;
@@ -281,7 +316,7 @@ function renderOvertimeSummary() {
             const { day, month, hours, bonus, total } = item;
             let color = 'bg-sky-100 text-sky-700';    // 1-2h
             if (hours >= 3 && hours <= 4) color = 'bg-yellow-100 text-yellow-700';
-            if (hours >= 5)               color = 'bg-orange-100 text-orange-700';
+            if (hours >= 5) color = 'bg-orange-100 text-orange-700';
 
             const div = document.createElement('div');
             div.className = `px-2 py-1 rounded-full ${color}`;
@@ -331,7 +366,7 @@ function renderOvertimeSummary() {
                 // Màu cột theo số giờ tăng ca (KHÔNG tính bonus)
                 let colorClass = 'bg-sky-300';           // 1–2h
                 if (hours >= 3 && hours <= 4) colorClass = 'bg-yellow-300';
-                if (hours >= 5)               colorClass = 'bg-orange-300';
+                if (hours >= 5) colorClass = 'bg-orange-300';
 
                 barHtml = `
                     <div class="w-full ${colorClass} rounded-t-[4px]"
@@ -520,7 +555,8 @@ async function addPersonalEvent(eventData) {
         res = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             body, // KHÔNG cần set headers Content-Type, trình duyệt tự dùng application/x-www-form-urlencoded
-            redirect: "follow"
+            mode: 'cors',
+            follow: 'redirect'
         });
     } catch (networkErr) {
         console.error('Lỗi khi gọi fetch tới Apps Script:', networkErr);
@@ -565,7 +601,8 @@ async function saveOvertime(dateKey, hours, fullDay) {
     const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         body,
-        redirect: "follow"
+        mode: 'cors',
+        follow: 'redirect'
     });
 
     const text = await res.text();
@@ -665,11 +702,17 @@ function init() {
         option.textContent = 'Năm ' + y;
         yearSelect.appendChild(option);
     }
-    
+
     // Set giá trị mặc định
     document.getElementById('month-select').value = viewMonth;
     document.getElementById('year-select').value = viewYear;
-    
+    const savedPin = localStorage.getItem('savedPin');
+    if (savedPin) {
+        eventsUnlocked = true; // Tự động mở khóa nếu đã có PIN
+    } else {
+        eventsUnlocked = false;
+    }
+    updatePersonalEventsVisibility();
     // Render lịch
     updateDayCalendar();
     renderMonthCalendar();
@@ -678,10 +721,10 @@ function init() {
 
     // Thiết lập form & tải sự kiện cá nhân
     setupEventForm();
-    loadPersonalEvents();
-    loadOvertimeData();
-    eventsUnlocked = localStorage.getItem('eventsUnlocked') === 'true';
-    updatePersonalEventsVisibility();
+    if (eventsUnlocked) {
+        loadPersonalEvents();
+        loadOvertimeData();
+    }
     // Debug: In ra kết quả để kiểm tra
     console.log('=== KIỂM TRA THUẬT TOÁN ÂM LỊCH ===');
     const testDate = new Date();
@@ -703,27 +746,27 @@ function updateDayCalendar() {
     const mm = selectedDate.getMonth() + 1;
     const yy = selectedDate.getFullYear();
     const dayOfWeek = selectedDate.getDay();
-    
+
     // Chuyển sang âm lịch
     const lunar = LunarCalendar.solar2Lunar(dd, mm, yy);
-    
+
     // Cập nhật Dương lịch
     //document.getElementById('solar-day').textContent = dd.toString().padStart(2, '0');
     document.getElementById('solar-day').textContent = dd;
     document.getElementById('solar-weekday').textContent = WEEKDAYS[dayOfWeek];
     document.getElementById('solar-month-year').textContent = `Tháng ${mm} năm ${yy}`;
-    
+
     // Cập nhật Âm lịch
     //document.getElementById('lunar-day').textContent = lunar.day.toString().padStart(2, '0');
     document.getElementById('lunar-day').textContent = lunar.day;
     const monthName = LunarCalendar.getLunarMonthName(lunar.month, lunar.leap);
     document.getElementById('lunar-month-info').textContent = `${monthName} năm ${lunar.year}`;
-    
+
     // Cập nhật Can Chi
     document.getElementById('day-canchi').textContent = LunarCalendar.getDayCanChi(lunar.jd);
     document.getElementById('month-canchi').textContent = LunarCalendar.getMonthCanChi(lunar.month, lunar.year);
     document.getElementById('year-canchi').textContent = LunarCalendar.getYearCanChi(lunar.year);
-    
+
     // Cập nhật năm con giáp
     const zodiac = LunarCalendar.getYearZodiac(lunar.year);
     const yearCanChi = LunarCalendar.getYearCanChi(lunar.year);
@@ -734,14 +777,14 @@ function updateDayCalendar() {
     if (tietKhiEl && LunarCalendar.getSolarTerm) {
         const tk = LunarCalendar.getSolarTerm(lunar.jd);
         tietKhiEl.textContent = (tk ? tk.name : '—');
-    } 
+    }
     // Kiểm tra ngày lễ
     const holidayInfo = document.getElementById('holiday-info');
     const solarKey = `${dd}/${mm}`;
     const lunarKey = `${lunar.day}/${lunar.month}`;
-    
+
     let holiday = SOLAR_HOLIDAYS[solarKey] || LUNAR_HOLIDAYS[lunarKey];
-    
+
     if (holiday) {
         holidayInfo.classList.remove('hidden');
         holidayInfo.querySelector('span').textContent = '🎉 ' + holiday;
@@ -758,17 +801,17 @@ function updateDayCalendar() {
 function renderMonthCalendar() {
     const grid = document.getElementById('calendar-grid');
     grid.innerHTML = '';
-    
+
     // Cập nhật tiêu đề
     document.getElementById('calendar-title').textContent = `Tháng ${viewMonth + 1} / ${viewYear}`;
     document.getElementById('month-select').value = viewMonth;
     document.getElementById('year-select').value = viewYear;
-    
+
     // Tính ngày đầu tiên của tháng
     const firstDay = new Date(viewYear, viewMonth, 1);
     let startDay = firstDay.getDay(); // 0 = CN
     startDay = startDay === 0 ? 6 : startDay - 1; // Chuyển về T2 = 0
-    
+
     // Số ngày trong tháng
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
     const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
@@ -865,7 +908,7 @@ function renderMonthCalendar() {
             const h = ot.hours;
             let otColor = 'bg-sky-100 text-sky-700';          // 1-2h
             if (h >= 3 && h <= 4) otColor = 'bg-yellow-100 text-yellow-700'; // 3-4h
-            if (h >= 5)           otColor = 'bg-orange-100 text-orange-700'; // 5h+
+            if (h >= 5) otColor = 'bg-orange-100 text-orange-700'; // 5h+
 
             chipsHtml += `
                 <div class="mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] md:text-[11px] font-medium max-w-full truncate ${otColor}">
@@ -922,14 +965,14 @@ function renderHolidayList() {
     const container = document.getElementById('holiday-list');
     document.getElementById('holiday-year').textContent = viewYear;
     container.innerHTML = '';
-    
+
     // Sắp xếp ngày lễ dương lịch theo thứ tự
     const sortedSolarHolidays = Object.entries(SOLAR_HOLIDAYS).sort((a, b) => {
         const [d1, m1] = a[0].split('/').map(Number);
         const [d2, m2] = b[0].split('/').map(Number);
         return m1 - m2 || d1 - d2;
     });
-    
+
     // Ngày lễ Dương lịch
     for (const [date, name] of sortedSolarHolidays) {
         const [d, m] = date.split('/');
@@ -946,7 +989,7 @@ function renderHolidayList() {
             </div>
         `;
     }
-    
+
     // Một số ngày lễ Âm lịch quan trọng
     const importantLunarHolidays = ['1/1', '10/3', '15/8'];
     for (const date of importantLunarHolidays) {
@@ -1057,18 +1100,18 @@ function mapAqiToStatus(aqi) {
         };
     }
     if (aqi <= 50) {
-        return { label: 'Tốt',       color: 'text-green-700',  bg: 'bg-green-100',  emoji: '🟢' };
+        return { label: 'Tốt', color: 'text-green-700', bg: 'bg-green-100', emoji: '🟢' };
     }
     if (aqi <= 100) {
-        return { label: 'Trung bình',color: 'text-yellow-700', bg: 'bg-yellow-100', emoji: '🟡' };
+        return { label: 'Trung bình', color: 'text-yellow-700', bg: 'bg-yellow-100', emoji: '🟡' };
     }
     if (aqi <= 150) {
-        return { label: 'Kém',       color: 'text-orange-700', bg: 'bg-orange-100', emoji: '🟠' };
+        return { label: 'Kém', color: 'text-orange-700', bg: 'bg-orange-100', emoji: '🟠' };
     }
     if (aqi <= 200) {
-        return { label: 'Xấu',       color: 'text-red-700',    bg: 'bg-red-100',    emoji: '🔴' };
+        return { label: 'Xấu', color: 'text-red-700', bg: 'bg-red-100', emoji: '🔴' };
     }
-    return { label: 'Rất xấu',       color: 'text-purple-700', bg: 'bg-purple-100', emoji: '🟣' };
+    return { label: 'Rất xấu', color: 'text-purple-700', bg: 'bg-purple-100', emoji: '🟣' };
 }
 
 // Map mã thời tiết của Open-Meteo sang icon
@@ -1139,17 +1182,17 @@ async function fetchWeatherAndAirQuality(lat, lon) {
         const current = weatherData.current_weather;
         if (!current) throw new Error('No current_weather in response');
 
-        const temp  = Math.round(current.temperature);
-        const icon  = getWeatherIconFromCode(current.weathercode);
-        const wind  = current.windspeed != null ? Math.round(current.windspeed) : null;
+        const temp = Math.round(current.temperature);
+        const icon = getWeatherIconFromCode(current.weathercode);
+        const wind = current.windspeed != null ? Math.round(current.windspeed) : null;
 
         // Độ ẩm + xác suất mưa: tìm giờ gần với current.time
         let humidity = null;
         let rainProb = null;
         try {
-            const times  = weatherData.hourly.time;
-            const hums   = weatherData.hourly.relativehumidity_2m;
-            const rains  = weatherData.hourly.precipitation_probability || [];
+            const times = weatherData.hourly.time;
+            const hums = weatherData.hourly.relativehumidity_2m;
+            const rains = weatherData.hourly.precipitation_probability || [];
 
             const nowMs = Date.parse(current.time);
             let bestIdx = 0;
@@ -1216,9 +1259,9 @@ async function fetchWeatherAndAirQuality(lat, lon) {
             if (geoRes.ok) {
                 const geoData = JSON.parse(geoText);
                 city = geoData.city ||
-                       geoData.locality ||
-                       geoData.principalSubdivision ||
-                       city;
+                    geoData.locality ||
+                    geoData.principalSubdivision ||
+                    city;
             }
         } catch (e) {
             console.warn('Geo fetch error:', e);
@@ -1240,23 +1283,23 @@ function renderWeatherUI() {
     const { city, temp, humidity, wind, rainProb, aqi, aqiInfo, icon } = currentWeatherInfo;
 
     const tempStr = temp != null ? `${temp}°C` : '--°C';
-    const humStr  = humidity != null ? `${humidity}%` : '--%';
+    const humStr = humidity != null ? `${humidity}%` : '--%';
     const windStr = wind != null ? `${wind} km/h` : '-- km/h';
     const rainStr = rainProb != null ? `${rainProb}%` : '--%';
 
     // Mini block trong Lịch Ngày
-    const iconEl   = document.getElementById('weather-icon');
-    const locEl    = document.getElementById('weather-location');
-    const tempEl   = document.getElementById('weather-temp');
-    const humEl    = document.getElementById('weather-humidity');
-    const windEl   = document.getElementById('weather-wind');
-    const rainEl   = document.getElementById('weather-rain');
-    const aqiMini  = document.getElementById('weather-aqi-mini');
+    const iconEl = document.getElementById('weather-icon');
+    const locEl = document.getElementById('weather-location');
+    const tempEl = document.getElementById('weather-temp');
+    const humEl = document.getElementById('weather-humidity');
+    const windEl = document.getElementById('weather-wind');
+    const rainEl = document.getElementById('weather-rain');
+    const aqiMini = document.getElementById('weather-aqi-mini');
 
     if (iconEl) iconEl.textContent = icon || '☁️';
-    if (locEl)  locEl.textContent  = city || 'Vị trí của bạn';
+    if (locEl) locEl.textContent = city || 'Vị trí của bạn';
     if (tempEl) tempEl.textContent = `🌡 ${tempStr}`;
-    if (humEl)  humEl.textContent  = `💧 ${humStr}`;
+    if (humEl) humEl.textContent = `💧 ${humStr}`;
     if (windEl) windEl.textContent = `🍃 ${windStr}`;
     if (rainEl) rainEl.textContent = `🌧 ${rainStr}`;
     if (aqiMini) {
@@ -1268,17 +1311,17 @@ function renderWeatherUI() {
     }
 
     // Block chi tiết bên dưới Sự kiện cá nhân
-    const dLoc   = document.getElementById('weather-detail-location');
-    const dTemp  = document.getElementById('weather-detail-temp');
-    const dHum   = document.getElementById('weather-detail-humidity');
-    const dWind  = document.getElementById('weather-detail-wind');
-    const dRain  = document.getElementById('weather-detail-rain');
-    const dAqi   = document.getElementById('weather-detail-aqi');
-    const dDesc  = document.getElementById('weather-detail-desc');
+    const dLoc = document.getElementById('weather-detail-location');
+    const dTemp = document.getElementById('weather-detail-temp');
+    const dHum = document.getElementById('weather-detail-humidity');
+    const dWind = document.getElementById('weather-detail-wind');
+    const dRain = document.getElementById('weather-detail-rain');
+    const dAqi = document.getElementById('weather-detail-aqi');
+    const dDesc = document.getElementById('weather-detail-desc');
 
-    if (dLoc)  dLoc.textContent  = city || 'Vị trí của bạn';
+    if (dLoc) dLoc.textContent = city || 'Vị trí của bạn';
     if (dTemp) dTemp.textContent = `🌡 Nhiệt độ: ${tempStr}`;
-    if (dHum)  dHum.textContent  = `💧 Độ ẩm: ${humStr}`;
+    if (dHum) dHum.textContent = `💧 Độ ẩm: ${humStr}`;
     if (dWind) dWind.textContent = `🍃 Gió: ${windStr}`;
     if (dRain) dRain.textContent = `🌧 Khả năng mưa: ${rainStr}`;
 

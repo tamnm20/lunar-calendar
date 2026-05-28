@@ -87,7 +87,7 @@ async function requestUnlockEvents() {
         const body = new URLSearchParams();
         body.append('data', JSON.stringify(payload));
 
-        const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', body });
+        const res = await fetch(APPS_SCRIPT_URL, { method: 'POST', body, redirect: "follow" });
         const data = await res.json();
 
         if (data.success) {
@@ -513,7 +513,8 @@ async function addPersonalEvent(eventData) {
     try {
         res = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
-            body // KHÔNG cần set headers Content-Type, trình duyệt tự dùng application/x-www-form-urlencoded
+            body, // KHÔNG cần set headers Content-Type, trình duyệt tự dùng application/x-www-form-urlencoded
+            redirect: "follow"
         });
     } catch (networkErr) {
         console.error('Lỗi khi gọi fetch tới Apps Script:', networkErr);
@@ -557,7 +558,8 @@ async function saveOvertime(dateKey, hours, fullDay) {
 
     const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        body
+        body,
+        redirect: "follow"
     });
 
     const text = await res.text();

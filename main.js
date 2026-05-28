@@ -40,7 +40,7 @@ const LUNAR_HOLIDAYS = {
 // Các ngày trong tuần
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 // URL Web App của Google Apps Script (sẽ tạo ở bước 3.3)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyNBVlh_0a33TYF7c_UODwO4m9mQd4HZQtxnMNMvKTQgKzp1-2Q7Qmb1rcLBEzS1W8dww/exec'; // thay bằng URL Web App thật
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxd3h35aJbyHgPi9YowoySBlM7y8IAYkD27wACia4Q9Kn9Pf518zaND2wYcTUVMixULDA/exec'; // thay bằng URL Web App thật
 // Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
 let personalEvents = {};
 
@@ -416,8 +416,11 @@ async function loadPersonalEvents() {
     if (!APPS_SCRIPT_URL || !savedPin) return; // Nếu chưa mở khóa thì không tải
 
     try {
-        // Thêm tham số pin vào URL
-        const res = await fetch(`${APPS_SCRIPT_URL}?events&pin=${savedPin}`);
+        // Bổ sung method: 'GET' và redirect: 'follow' để xử lý chuyển hướng của Google
+        const res = await fetch(`${APPS_SCRIPT_URL}?events&pin=${savedPin}`, {
+            method: 'GET',
+            redirect: 'follow'
+        });
         const text = await res.text();
         console.log('Apps Script GET status:', res.status);
         console.log('Apps Script GET raw response:', text);
@@ -459,8 +462,11 @@ async function loadOvertimeData() {
     const savedPin = localStorage.getItem('savedPin');
     if (!APPS_SCRIPT_URL || !savedPin) return; // Nếu chưa mở khóa thì không tải
     try {
-        // Thêm tham số pin vào URL
-        const res = await fetch(`${APPS_SCRIPT_URL}?type=overtime&pin=${savedPin}`);
+        // Bổ sung method: 'GET' và redirect: 'follow' để xử lý chuyển hướng của Google
+        const res = await fetch(`${APPS_SCRIPT_URL}?type=overtime&pin=${savedPin}`, {
+            method: 'GET',
+            redirect: 'follow'
+        });
         const text = await res.text();
         console.log('Overtime GET status:', res.status);
         console.log('Overtime raw response:', text);

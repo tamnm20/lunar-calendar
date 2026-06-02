@@ -229,7 +229,7 @@ function renderOvertimeSummary() {
         const h = ot.hours || 0;
         if (h <= 0) continue;
 
-        const bonus = ot.fullDay && h > 2 ? 0.5 : 0;
+        const bonus = ot.fullDay && h >= 2 ? 0.5 : 0;
         const totalH = h + bonus;
 
         // Phân loại ngày thường / Chủ nhật

@@ -430,5 +430,180 @@
             </form>
         </div>
     </div>
+    <button id="btn-open-wc" 
+            type="button"
+            class="fixed bottom-6 right-6 z-40 w-16 h-16 bg-green-700 rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300 text-3xl pb-1"
+            aria-label="Xem lịch World Cup 2026">
+        ⚽
+    </button>
+
+    <div id="wc-panel" class="fixed inset-0 z-50 bg-gray-100 transform translate-x-full invisible transition-all duration-300 ease-in-out flex flex-col">
+        
+        <header class="bg-blue-900 text-white p-4 shadow-lg flex items-center shrink-0">
+            <button id="btn-close-wc" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-blue-800 transition mr-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+            </button>
+            <h2 class="text-xl font-bold flex items-center gap-2">⚽ World Cup 2026</h2>
+        </header>
+
+        <!-- <main class="flex-1 overflow-y-auto bg-gray-50 flex flex-col">
+            
+            <nav class="bg-white px-4 py-3 shadow-sm shrink-0 border-b border-gray-200">
+                <div class="flex overflow-x-auto gap-2 pb-1" style="-ms-overflow-style: none; scrollbar-width: none;">
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold whitespace-nowrap shadow-md">
+                        Bảng thi đấu
+                    </button>
+                    
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Lượt trận vòng bảng
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Vòng 32 đội
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Vòng 16 đội
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Tứ kết
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Bán kết
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Chung kết
+                    </button>
+                </div>
+            </nav>
+
+            <div class="p-4 sm:p-6">
+                <div id="wc-matches-container" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center">
+                    <div class="text-5xl mb-3">🔄</div>
+                    <p class="text-gray-500">Đang tải dữ liệu Bảng thi đấu...</p>
+                </div>
+            </div>
+        </main> -->
+        <main id="wc-main-scroll" class="flex-1 overflow-y-auto bg-gray-50 flex flex-col scroll-smooth">
+    
+            <nav class="bg-white px-4 py-3 shadow-sm shrink-0 border-b border-gray-200 sticky top-0 z-10">
+                <div class="flex overflow-x-auto gap-2 pb-1 wc-nav-container" style="-ms-overflow-style: none; scrollbar-width: none;">
+                    <button data-target="sec-bang" class="wc-nav-btn px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold whitespace-nowrap shadow-md transition">
+                        Bảng thi đấu
+                    </button>
+                    <button data-target="sec-vong-bang" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">
+                        Lượt trận vòng bảng
+                    </button>
+                    <button data-target="sec-32" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">Vòng 32 đội</button>
+                    <button data-target="sec-16" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">Vòng 16 đội</button>
+                </div>
+            </nav>
+
+            <div class="p-4 sm:p-6 space-y-8 pb-20">
+                
+                <section id="sec-bang" class="scroll-mt-20">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-blue-600 rounded"></span> Bảng thi đấu
+                    </h3>
+                    <div class="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
+                        <img src="./public/group.png" alt="Bảng thi đấu World Cup 2026" class="w-full rounded-lg object-contain">
+                    </div>
+                </section>
+
+                <section id="sec-vong-bang" class="scroll-mt-20">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-blue-600 rounded"></span> Lịch thi đấu vòng bảng
+                    </h3>
+
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-600 mb-3 uppercase text-sm tracking-wider">Lượt trận 1</h4>
+                        <div class="space-y-3">
+                            
+                            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center">
+                                <div class="flex flex-col items-center justify-center w-20 border-r border-gray-100 pr-3 shrink-0">
+                                    <span class="text-xs text-gray-500 font-medium">11/06</span>
+                                    <span class="text-lg font-bold text-gray-800 leading-tight">02:00</span>
+                                    <span class="mt-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Bảng A</span>
+                                </div>
+                                <div class="flex-1 pl-4 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://flagcdn.com/w40/mx.png" alt="Mexico" class="w-6 h-6 rounded-full object-cover border border-gray-200">
+                                            <span class="font-semibold text-gray-800">Mexico</span>
+                                        </div>
+                                        <span class="text-gray-300 font-medium">-</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://flagcdn.com/w40/pl.png" alt="Ba Lan" class="w-6 h-6 rounded-full object-cover border border-gray-200">
+                                            <span class="font-semibold text-gray-800">Ba Lan</span>
+                                        </div>
+                                        <span class="text-gray-300 font-medium">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center">
+                                <div class="flex flex-col items-center justify-center w-20 border-r border-gray-100 pr-3 shrink-0">
+                                    <span class="text-xs text-gray-500 font-medium">12/06</span>
+                                    <span class="text-lg font-bold text-gray-800 leading-tight">05:00</span>
+                                    <span class="mt-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Bảng B</span>
+                                </div>
+                                <div class="flex-1 pl-4 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://flagcdn.com/w40/us.png" alt="Mỹ" class="w-6 h-6 rounded-full object-cover border border-gray-200">
+                                            <span class="font-semibold text-gray-800">Mỹ</span>
+                                        </div>
+                                        <span class="text-gray-300 font-medium">-</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <img src="https://flagcdn.com/w40/ca.png" alt="Canada" class="w-6 h-6 rounded-full object-cover border border-gray-200">
+                                            <span class="font-semibold text-gray-800">Canada</span>
+                                        </div>
+                                        <span class="text-gray-300 font-medium">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-600 mb-3 uppercase text-sm tracking-wider">Lượt trận 2</h4>
+                        <div class="space-y-3">
+                            <div class="bg-white rounded-xl p-4 text-center border border-gray-100 text-gray-500 text-sm">
+                                Bạn có thể copy cấu trúc thẻ trận đấu ở trên xuống đây...
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <h4 class="font-semibold text-gray-600 mb-3 uppercase text-sm tracking-wider">Lượt trận 3</h4>
+                        <div class="space-y-3">
+                            <div class="bg-white rounded-xl p-4 text-center border border-gray-100 text-gray-500 text-sm">
+                                Cấu trúc tương tự Lượt 1...
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="sec-32" class="scroll-mt-20 min-h-[50vh]">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-blue-600 rounded"></span> Vòng 32 đội
+                    </h3>
+                    <p class="text-gray-500">Đang cập nhật...</p>
+                </section>
+                
+                <section id="sec-16" class="scroll-mt-20 min-h-[50vh]">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-blue-600 rounded"></span> Vòng 16 đội
+                    </h3>
+                    <p class="text-gray-500">Đang cập nhật...</p>
+                </section>
+            </div>
+        </main>
+    </div>
 </body>
 </html>

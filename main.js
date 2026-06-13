@@ -47,7 +47,6 @@ let personalEvents = {};
 // Lưu giờ tăng ca: { 'YYYY-MM-DD': { hours: number, fullDay: boolean } }
 let overtimeMap = {};
 // Cơ chế mở khóa phần sự kiện cá nhân (PIN cực đơn giản, chỉ chạy phía client)
-const PERSONAL_EVENTS_PIN = '2212';   // ĐỔI PIN TẠI ĐÂY
 let eventsUnlocked = false;           // trạng thái đã mở khóa hay chưa
 function updatePersonalEventsVisibility() {
     const content = document.getElementById('personal-events-content');

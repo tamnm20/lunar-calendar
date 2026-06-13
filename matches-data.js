@@ -220,19 +220,45 @@ const MatchRenderer = {
     },
 
     /**
-     * Tạo HTML cho 1 card trận đấu
+     * Tạo HTML cho 1 card trận đấu (Đã tích hợp tỷ số)
      */
     matchCard(match) {
+        // Gọi hàm lấy tỷ số từ Local Storage
+        const matchData = typeof WCScoreManager !== 'undefined' 
+            ? WCScoreManager.getScore(match.team1.name, match.team2.name) 
+            : null;
+
+        // Nếu có tỷ số (khác null), hiển thị tỷ số. Nếu chưa đá, hiển thị dấu "-"
+        const score1 = (matchData && matchData.homeScore !== null) ? matchData.homeScore : '-';
+        const score2 = (matchData && matchData.awayScore !== null) ? matchData.awayScore : '-';
+        
+        // Trạng thái trận đấu (FT: Hết giờ, Live, v.v.)
+        const statusHtml = matchData && matchData.status !== 'NS' 
+            ? `<span class="mt-1 text-[9px] font-bold bg-red-50 text-red-600 px-2 py-0.5 rounded animate-pulse">${matchData.status}</span>` 
+            : `<span class="mt-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Bảng ${match.group}</span>`;
+
         return `
             <div class="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex items-center">
                 <div class="flex flex-col items-center justify-center w-20 border-r border-gray-100 pr-3 shrink-0">
                     <span class="text-xs text-gray-500 font-medium">${match.date}</span>
                     <span class="text-lg font-bold text-gray-800 leading-tight">${match.time}</span>
-                    <span class="mt-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded">Bảng ${match.group}</span>
+                    ${statusHtml}
                 </div>
                 <div class="flex-1 pl-4 space-y-2">
-                    ${this.teamRow(match.team1)}
-                    ${this.teamRow(match.team2)}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="https://flagcdn.com/w40/${match.team1.code}.png" alt="${match.team1.name}" class="w-6 h-6 rounded-full object-cover border border-gray-200">
+                            <span class="font-semibold text-gray-800">${match.team1.name}</span>
+                        </div>
+                        <span class="text-lg font-bold ${score1 !== '-' ? 'text-blue-600' : 'text-gray-300'}">${score1}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="https://flagcdn.com/w40/${match.team2.code}.png" alt="${match.team2.name}" class="w-6 h-6 rounded-full object-cover border border-gray-200">
+                            <span class="font-semibold text-gray-800">${match.team2.name}</span>
+                        </div>
+                        <span class="text-lg font-bold ${score2 !== '-' ? 'text-blue-600' : 'text-gray-300'}">${score2}</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -618,6 +644,9 @@ document.addEventListener('DOMContentLoaded', () => {
     MatchRenderer.init();
     WCPanel.init();
     WCNav.init();
+
+    // Gọi API lấy tỷ số (không lo spam vì đã có cache 15 phút)
+    WCScoreManager.fetchAndSaveScores();
 });
 
 // ============================================================
@@ -887,5 +916,138 @@ const BracketRenderer = {
         toast.textContent = message;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
+    }
+};
+
+// ============================================================
+// MODULE 6: TÍCH HỢP FOOTBALL-DATA.ORG (MIỄN PHÍ - 10 REQ/PHÚT)
+// ============================================================
+const WCScoreManager = {
+    API_KEY: '4f8d79f51c3543f8887fe17f80105b4c', 
+    COMPETITION_ID: 2000, // 2000 là ID cố định của giải FIFA World Cup trên nền tảng này
+    SEASON: 2026,         // Để 2022 để test xem tỷ số có lên không. Gần giải đổi thành 2026.
+    CACHE_TIME: 15 * 60 * 1000, // Cache 15 phút để không bị khóa API (Giới hạn 10 req/phút)
+
+    // Từ điển dịch tên Đội bóng: Tiếng Anh (Football-Data) -> Tiếng Việt (Source của bạn)
+    TEAM_NAME_MAP: {
+        "mexico": "mexico",
+        "south africa": "nam phi",
+        "south korea": "hàn quốc",
+        "czech republic": "ch czech",
+        "canada": "canada",
+        "bosnia and herzegovina": "bosnia và herzegovina",
+        "united states": "mỹ", // Tên của Mỹ thường được ghi đầy đủ trên API này
+        "paraguay": "paraguay",
+        "qatar": "qatar",
+        "ecuador": "ecuador",
+        "senegal": "senegal",
+        "netherlands": "hà lan",
+        "england": "anh",
+        "iran": "iran",
+        "wales": "wales",
+        "argentina": "argentina",
+        "saudi arabia": "saudi arabia",
+        "poland": "ba lan",
+        "france": "pháp",
+        "australia": "úc",
+        "denmark": "đan mạch",
+        "tunisia": "tunisia",
+        "spain": "tây ban nha",
+        "costa rica": "costa rica",
+        "germany": "đức",
+        "japan": "nhật bản",
+        "belgium": "bỉ",
+        "morocco": "ma-rốc",
+        "croatia": "croatia",
+        "brazil": "brazil",
+        "serbia": "serbia",
+        "switzerland": "thụy sĩ",
+        "cameroon": "cameroon",
+        "portugal": "bồ đào nha",
+        "ghana": "ghana",
+        "uruguay": "uruguay"
+    },
+
+    async fetchAndSaveScores() {
+        const lastUpdate = localStorage.getItem('wc_last_update');
+        const now = new Date().getTime();
+
+        if (lastUpdate && (now - lastUpdate < this.CACHE_TIME)) {
+            console.log('⚽ [Football-Data] Sử dụng tỷ số lưu tại LocalStorage');
+            return;
+        }
+
+        try {
+            console.log('⚽ [Football-Data] Đang gọi API lấy dữ liệu...');
+            
+            const response = await fetch(`https://api.football-data.org/v4/competitions/${this.COMPETITION_ID}/matches?season=${this.SEASON}`, {
+                method: 'GET',
+                headers: {
+                    'X-Auth-Token': this.API_KEY // Header đặc trưng của Football-Data.org
+                }
+            });
+            
+            const data = await response.json();
+
+            if (data.errorCode) {
+                console.error("❌ Lỗi API:", data.message);
+                return;
+            }
+
+            // Mảng chứa dữ liệu trận đấu nằm trong trường data.matches
+            if (data.matches && data.matches.length > 0) {
+                const scoreMap = {};
+                
+                data.matches.forEach(match => {
+                    const apiHomeEn = match.homeTeam.name ? match.homeTeam.name.toLowerCase() : "";
+                    const apiAwayEn = match.awayTeam.name ? match.awayTeam.name.toLowerCase() : "";
+
+                    const homeVi = this.TEAM_NAME_MAP[apiHomeEn] || apiHomeEn;
+                    const awayVi = this.TEAM_NAME_MAP[apiAwayEn] || apiAwayEn;
+
+                    const key = `${homeVi}-${awayVi}`;
+                    
+                    // Rút gọn trạng thái trận đấu
+                    let shortStatus = 'NS'; 
+                    if (match.status === 'FINISHED') shortStatus = 'FT';
+                    else if (match.status === 'IN_PLAY' || match.status === 'PAUSED') shortStatus = 'Live';
+                    else if (match.status === 'POSTPONED') shortStatus = 'Hoãn';
+                    
+                    // Tỷ số ở phút cuối cùng nằm trong fullTime
+                    scoreMap[key] = {
+                        homeScore: match.score.fullTime.home, // null nếu chưa có
+                        awayScore: match.score.fullTime.away,
+                        status: shortStatus
+                    };
+                });
+
+                localStorage.setItem('wc_scores', JSON.stringify(scoreMap));
+                localStorage.setItem('wc_last_update', now.toString());
+                console.log('💾 [Football-Data] Đã cập nhật và lưu tỷ số mới vào LocalStorage!');
+                
+                if (typeof MatchRenderer !== 'undefined' && MatchRenderer.init) {
+                    MatchRenderer.init();
+                }
+            }
+        } catch (error) {
+            console.error("❌ [Football-Data] Lỗi kết nối mạng hoặc xử lý logic:", error);
+        }
+    },
+
+    getScore(team1Name, team2Name) {
+        const scores = JSON.parse(localStorage.getItem('wc_scores')) || {};
+        const key = `${team1Name.toLowerCase()}-${team2Name.toLowerCase()}`;
+        
+        if (scores[key]) return scores[key];
+        
+        const reverseKey = `${team2Name.toLowerCase()}-${team1Name.toLowerCase()}`;
+        if (scores[reverseKey]) {
+            return {
+                homeScore: scores[reverseKey].awayScore,
+                awayScore: scores[reverseKey].homeScore,
+                status: scores[reverseKey].status
+            };
+        }
+        return null;
     }
 };

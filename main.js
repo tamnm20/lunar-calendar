@@ -484,12 +484,40 @@ async function loadPersonalEvents() {
             if (!personalEvents[key]) personalEvents[key] = [];
             personalEvents[key].push(ev);
         });
-
+        injectPregnancyMilestones();
         renderDayEvents();
         renderMonthCalendar();
     } catch (err) {
         console.error('Không tải được sự kiện cá nhân từ Apps Script', err);
     }
+}
+
+// Hàm tự động thêm các mốc khám thai quan trọng
+function injectPregnancyMilestones() {
+    const milestones = [
+        { date: "2026-07-04", title: "Khám thai (T11-13): NIPT, mờ da gáy", description: "Tầm soát hội chứng Down", tagColor: "red" },
+        { date: "2026-08-08", title: "Khám thai (T16-18): Triple Test", description: "Làm nếu chưa xét nghiệm NIPT", tagColor: "pink" },
+        { date: "2026-09-05", title: "Khám thai (T20-22): SA hình thái học", description: "Tầm soát toàn diện dị tật", tagColor: "red" },
+        { date: "2026-10-03", title: "Khám thai (T24-28): Tiểu đường, Tiêm UV 1", description: "Tầm soát tiểu đường thai kỳ, tiêm uốn ván mũi 1", tagColor: "pink" },
+        { date: "2026-11-14", title: "Khám thai (T30-32): SA Doppler, Tiêm UV 2", description: "Kiểm tra bánh nhau, nước ối, tiêm uốn ván mũi 2", tagColor: "red" },
+        { date: "2026-12-26", title: "Khám thai (T36-39): Khám mỗi tuần chuẩn bị sinh", description: "Đo tim thai, kiểm tra ngôi thai, khung chậu", tagColor: "red" }
+    ];
+
+    milestones.forEach(ev => {
+        if (!personalEvents[ev.date]) personalEvents[ev.date] = [];
+        
+        // Kiểm tra xem đã có chưa để không bị nhân đôi khi reload
+        const exists = personalEvents[ev.date].find(e => e.title === ev.title);
+        if (!exists) {
+            personalEvents[ev.date].push({
+                id: 'preg_' + ev.date,
+                date: ev.date,
+                title: ev.title,
+                description: ev.description,
+                tagColor: ev.tagColor
+            });
+        }
+    });
 }
 
 async function loadOvertimeData() {
@@ -886,8 +914,19 @@ function renderMonthCalendar() {
 
             dayEvents.slice(0, maxShow).forEach(ev => {
                 const title = ev.title || '';
+                
+                // Mặc định là màu xanh (sky)
+                let colorClass = 'bg-sky-100 text-sky-700 border-sky-200'; 
+                
+                // Đổi màu nếu sự kiện có gắn tagColor
+                if (ev.tagColor === 'pink') {
+                    colorClass = 'bg-pink-100 text-pink-700 border-pink-200';
+                } else if (ev.tagColor === 'red') {
+                    colorClass = 'bg-red-100 text-red-700 border-red-200';
+                }
+
                 chipsHtml += `
-                    <div class="mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[9px] sm:text-[10px] md:text-[11px] font-medium max-w-full truncate border border-sky-200"
+                    <div class="mt-0.5 sm:mt-1 px-1.5 sm:px-2 py-0.5 rounded-full ${colorClass} text-[9px] sm:text-[10px] md:text-[11px] font-medium max-w-full truncate border"
                         title="${title}">
                         ${title}
                     </div>

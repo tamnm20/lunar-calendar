@@ -400,7 +400,7 @@
     <!-- Load JavaScript -->
     <script src="lunar-calendar.js"></script>
     <script src="main.js"></script>
-    <script src="matches-data.js"></script>
+    <script src="pregnancy-data.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./service-worker.js');
@@ -431,123 +431,54 @@
             </form>
         </div>
     </div>
-    <button id="btn-open-wc" 
+    <button id="btn-open-preg" 
             type="button"
-            class="fixed bottom-6 right-6 z-40 w-16 h-16 bg-green-700 rounded-full shadow-2xl flex items-center justify-center hover:bg-blue-700 transition-all duration-300 ease-in-out transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-blue-300 text-3xl pb-1"
-            aria-label="Xem lịch World Cup 2026">
-        ⚽
+            class="fixed bottom-6 right-6 z-40 w-16 h-16 bg-pink-500 rounded-full shadow-2xl flex items-center justify-center hover:bg-pink-600 transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-pink-300 text-3xl pb-1"
+            aria-label="Theo dõi thai kỳ">
+        👶
     </button>
 
-    <div id="wc-panel" class="fixed inset-0 z-50 bg-gray-100 transform translate-x-full invisible transition-all duration-300 ease-in-out flex flex-col">
-        
-        <header class="bg-blue-900 text-white p-4 shadow-lg flex items-center shrink-0">
-            <button id="btn-close-wc" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-blue-800 transition mr-3">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+    <div id="preg-panel" class="fixed inset-0 z-50 bg-gray-100 transform translate-x-full invisible transition-all duration-300 ease-in-out flex flex-col">
+        <header class="bg-pink-600 text-white p-4 shadow-lg flex items-center shrink-0">
+            <button id="btn-close-preg" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-pink-700 transition mr-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             </button>
-            <h2 class="text-xl font-bold flex items-center gap-2">⚽ World Cup 2026</h2>
+            <h2 class="text-xl font-bold flex items-center gap-2">Hành trình của con 🍼</h2>
         </header>
-        <main id="wc-main-scroll" class="flex-1 overflow-y-auto bg-gray-50 flex flex-col">
-    
-            <nav class="bg-white px-4 py-3 shadow-sm shrink-0 border-b border-gray-200 sticky top-0 z-20">
-                <div class="flex overflow-x-auto gap-2 pb-1 wc-nav-container" style="-ms-overflow-style: none; scrollbar-width: none;">
-                    <button data-target="sec-bang" class="wc-nav-btn px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-semibold whitespace-nowrap shadow-md">
-                        Bảng thi đấu
-                    </button>
-                    <button data-target="sec-vong-bang" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold whitespace-nowrap">
-                        Lượt trận vòng bảng
-                    </button>
-                    <button data-target="sec-32" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold whitespace-nowrap">Vòng 32 đội</button>
-                    <button data-target="sec-16" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold whitespace-nowrap">Vòng 16 đội</button>
-                    <button data-target="sec-quarter" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold whitespace-nowrap">Tứ kết</button>
-                    <button data-target="sec-semi" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold whitespace-nowrap">Bán kết</button>
-                    <button data-target="sec-final" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold whitespace-nowrap">Chung kết</button>
-                    <button data-target="sec-bracket" class="wc-nav-btn px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full text-sm font-semibold whitespace-nowrap transition">🗺️ Roadmap</button>
+
+        <main class="flex-1 overflow-y-auto bg-gray-50 flex flex-col pb-20">
+            <div id="preg-hero" class="relative w-full h-100 shrink-0 bg-cover bg-center flex items-end justify-center pb-3 shadow-md transition-all duration-500 rounded-b-2xl" style="background-image: url('public/pregnancy/default.png   ');">
+                
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent rounded-b-3xl"></div>
+                
+                <div class="relative z-10 text-center w-full px-4">
+                    <h3 class="text-white text-xs font-normal tracking-wide opacity-80 mb-0.5">Tuổi thai vào ngày --/--/----</h3>
+                    
+                    <div id="preg-age-text" class="text-white drop-shadow-xl">
+                        <div class="text-3xl font-extrabold">Tháng thứ --</div>
+                        <div class="text-lg font-medium opacity-90">
+                            (-- Tuần -- Ngày)
+                        </div>
+                    </div>
                 </div>
-            </nav>
+            </div>
+            <div id="preg-extra-img-container" class="hidden px-6 pt-6 w-full flex justify-center transition-all duration-300">
+                <img id="preg-extra-img" src="" alt="Hình ảnh thai kỳ bổ sung" class="w-full max-h-60 object-cover rounded-2xl shadow-sm border-2 border-pink-100">
+            </div>
+            <div id="preg-milestone-container" class="p-6 hidden">
+                <h4 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span class="w-1 h-5 bg-pink-500 rounded"></span> Lịch khám quan trọng
+                </h4>
+                <div id="preg-milestone-content" class="bg-white p-4 rounded-xl shadow-sm border border-pink-100 text-gray-700"></div>
+            </div>
 
-            <div class="p-4 sm:p-6 space-y-8 pb-20">
-            <section id="sec-bang" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-blue-600 rounded"></span> Bảng thi đấu
-                    </h3>
-                    <div class="bg-white p-2 rounded-xl shadow-sm border border-gray-100">
-                        <img src="./public/group.png" alt="Bảng thi đấu World Cup 2026" class="w-full rounded-lg object-contain">
-                    </div>
-                </section>         
-                <section id="sec-vong-bang" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-blue-600 rounded"></span> Lịch thi đấu vòng bảng
-                    </h3>
-
-                    <!-- Lượt trận 1 -->
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-gray-600 mb-3 uppercase text-sm tracking-wider">Lượt trận 1</h4>
-                        <div id="matches-round-1" class="space-y-3"></div>
-                    </div>
-
-                    <!-- Lượt trận 2 -->
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-gray-600 mb-3 uppercase text-sm tracking-wider">Lượt trận 2</h4>
-                        <div id="matches-round-2" class="space-y-3"></div>
-                    </div>
-
-                    <!-- Lượt trận 3 -->
-                    <div class="mb-6">
-                        <h4 class="font-semibold text-gray-600 mb-3 uppercase text-sm tracking-wider">Lượt trận 3</h4>
-                        <div id="matches-round-3" class="space-y-3"></div>
-                    </div>
-                </section>
-                <!-- Vòng 32 đội -->
-                <section id="sec-32" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-orange-500 rounded"></span> Vòng 32 đội
-                    </h3>
-                    <div id="matches-round-32" class="space-y-3"></div>
-                </section>
-                <!-- Vòng 16 đội -->
-                <section id="sec-16" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-orange-500 rounded"></span> Vòng 16 đội
-                    </h3>
-                    <div id="matches-round-16" class="space-y-3"></div>
-                </section>
-                <!-- ✅ Tứ kết -->
-                <section id="sec-quarter" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-purple-500 rounded"></span> Tứ kết
-                    </h3>
-                    <div id="matches-quarter" class="space-y-3"></div>
-                </section>
-
-                <!-- ✅ Bán kết -->
-                <section id="sec-semi" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-yellow-500 rounded"></span> Bán kết
-                    </h3>
-                    <div id="matches-semi" class="space-y-3"></div>
-                </section>
-
-                <!-- ✅ Tranh hạng 3 + Chung kết -->
-                <section id="sec-final" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-red-500 rounded"></span> Tranh hạng 3 & Chung kết
-                    </h3>
-                    <div class="space-y-3">
-                        <div id="match-third-place"></div>
-                        <div id="match-final"></div>
-                    </div>
-                </section>
-
-                <!-- ✅ ROADMAP BRACKET -->
-                <section id="sec-bracket" class="scroll-mt-20">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                        <span class="w-1 h-5 bg-gradient-to-b from-blue-600 to-purple-600 rounded"></span> 
-                        Roadmap đến chức vô địch
-                    </h3>
-                    <div id="bracket-container" class="rounded-2xl shadow-md overflow-hidden"></div>
-                </section>
+            <div class="p-6 pt-0">
+                <h4 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span class="w-1 h-5 bg-green-500 rounded"></span> Gợi ý dinh dưỡng
+                </h4>
+                <div id="preg-nutrition-content" class="bg-white p-4 rounded-xl shadow-sm border border-green-100 text-gray-700 space-y-2 leading-relaxed">
+                    Đang tải dữ liệu từ Google Sheets...
+                </div>
             </div>
         </main>
     </div>

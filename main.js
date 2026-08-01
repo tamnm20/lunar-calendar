@@ -40,7 +40,7 @@ const LUNAR_HOLIDAYS = {
 // Các ngày trong tuần
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 // URL Web App của Google Apps Script (sẽ tạo ở bước 3.3)
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxq8kDd6P_I0egozZBQbnYsu5pm_UGfrZ2GH9bKnylYJaaD50pbkPB5GqggLDQYd6Jt5w/exec'; // thay bằng URL Web App thật
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyBzsyYBnEVip7EvHE939ZPXgXC_7BUXv-dw9SsxB0o4f7Yp94xSgZpog_Cejm2dUD/exec'; // thay bằng URL Web App thật
 // Lưu sự kiện cá nhân đã tải về: { 'YYYY-MM-DD': [ {id, date, title, description} ] }
 let personalEvents = {};
 
@@ -54,12 +54,14 @@ function updatePersonalEventsVisibility() {
     const otPanel = document.getElementById('overtime-panel');
     if (!lockBtn) return;
 
+    // LUÔN BỎ ẨN phần content để danh sách mốc khám thai được hiển thị
+    if (content) content.classList.remove('hidden');
+
     if (eventsUnlocked) {
-        if (content) content.classList.remove('hidden');
         if (otPanel) otPanel.classList.remove('hidden');
         lockBtn.textContent = '🔓 Khóa lại';
     } else {
-        if (content) content.classList.add('hidden');
+        // Khi khóa, ta chỉ ẩn Panel Tăng ca đi
         if (otPanel) otPanel.classList.add('hidden');
         lockBtn.textContent = '🔒 Mở khóa';
     }
@@ -106,6 +108,7 @@ async function requestUnlockEvents() {
             localStorage.removeItem('savedPin'); // Xóa PIN khỏi bộ nhớ
             updatePersonalEventsVisibility();
             renderMonthCalendar();
+            renderDayEvents(); // <-- THÊM DÒNG NÀY ĐỂ UPDATE LẠI DANH SÁCH SỰ KIỆN
             if (typeof renderOvertimeSummary === 'function') renderOvertimeSummary();
         }
         return;
@@ -172,7 +175,9 @@ function renderDayEvents() {
     if (!listEl || !dateTextEl) return; // phòng khi HTML chưa được thêm
 
     const key = formatDateKey(selectedDate);
-    const events = personalEvents[key] || [];
+    const allEvents = personalEvents[key] || [];
+    // Lọc: Luôn hiện mốc khám thai, các sự kiện khác chỉ hiện khi đã mở khóa
+    const events = allEvents.filter(ev => eventsUnlocked || (ev.id && ev.id.startsWith('preg_')));
 
     dateTextEl.textContent = `Sự kiện cho ngày ${formatDateVi(selectedDate)}`;
 
@@ -741,6 +746,7 @@ function init() {
     }
     updatePersonalEventsVisibility();
     // Render lịch
+    injectPregnancyMilestones();
     updateDayCalendar();
     renderMonthCalendar();
     renderHolidayList();
@@ -863,8 +869,9 @@ function renderMonthCalendar() {
         // const dayEvents = personalEvents[dateKey] || [];
 
         const dateKey = formatDateKeyFromParts(year, monthIndex, day);
-        // Nếu chưa mở khóa, không cho hiển thị sự kiện cá nhân trên lịch tháng
-        const dayEvents = eventsUnlocked ? (personalEvents[dateKey] || []) : [];
+        const allEvents = personalEvents[dateKey] || [];
+        // Lọc: Luôn hiện mốc khám thai (có id bắt đầu bằng 'preg_'), các sự kiện khác cần mở khóa
+        const dayEvents = allEvents.filter(ev => eventsUnlocked || (ev.id && ev.id.startsWith('preg_')));
 
         const ot = eventsUnlocked ? overtimeMap[dateKey] : null;
 

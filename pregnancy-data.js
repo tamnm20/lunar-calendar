@@ -185,3 +185,81 @@ const PregnancyTracker = {
 document.addEventListener('DOMContentLoaded', () => {
     PregnancyTracker.init();
 });
+
+/**
+ * =====================================================
+ * MODULE: CẨM NANG DINH DƯỠNG (SWIPE GALLERY)
+ * =====================================================
+ */
+const NutriBookTracker = {
+    // TỔNG SỐ TRANG (Sửa con số này đúng với số lượng ảnh trang-?.png bạn có)
+    TOTAL_PAGES: 23, 
+
+    init() {
+        this.openBtn = document.getElementById('btn-open-nutri-book');
+        this.closeBtn = document.getElementById('btn-close-nutri-book');
+        this.modal = document.getElementById('nutri-gallery-modal');
+        this.slider = document.getElementById('nutri-slider');
+        this.counter = document.getElementById('nutri-page-counter');
+        
+        if (!this.openBtn || !this.modal) return;
+
+        this.isRendered = false;
+        this.bindEvents();
+    },
+
+    bindEvents() {
+        // Bấm mở sách
+        this.openBtn.addEventListener('click', () => {
+            if (!this.isRendered) this.renderImages();
+            
+            this.modal.classList.remove('hidden');
+            // Cần 1 chút delay để CSS transition opacity hoạt động
+            setTimeout(() => this.modal.classList.remove('opacity-0'), 10);
+        });
+
+        // Bấm đóng sách
+        this.closeBtn.addEventListener('click', () => {
+            this.modal.classList.add('opacity-0');
+            setTimeout(() => this.modal.classList.add('hidden'), 300);
+        });
+
+        // Lắng nghe sự kiện cuộn (vuốt ngang) để cập nhật số trang
+        this.slider.addEventListener('scroll', () => {
+            // Lấy vị trí cuộn hiện tại chia cho chiều rộng 1 màn hình để ra số trang
+            const scrollX = this.slider.scrollLeft;
+            const width = this.slider.clientWidth;
+            const currentPage = Math.round(scrollX / width) + 1;
+            
+            this.counter.textContent = `Trang ${currentPage} / ${this.TOTAL_PAGES}`;
+        });
+    },
+
+    renderImages() {
+        this.slider.innerHTML = ''; // Xóa rỗng trước khi nạp
+
+        for (let i = 1; i <= this.TOTAL_PAGES; i++) {
+            // Tạo div bọc ảnh có thuộc tính snap-center để khi vuốt nó khựng lại đúng giữa màn hình
+            const wrapper = document.createElement('div');
+            wrapper.className = "w-full h-full flex-shrink-0 snap-center flex justify-center items-center p-2";
+            
+            // Tạo thẻ img (sử dụng loading="lazy" để web không bị đơ khi nạp quá nhiều ảnh cùng lúc)
+            const img = document.createElement('img');
+            img.src = `public/care/trang-${i}.png`; // Đường dẫn ảnh của bạn
+            img.className = "max-w-full max-h-full object-contain rounded-lg";
+            img.loading = "lazy"; 
+            img.alt = `Cẩm nang dinh dưỡng trang ${i}`;
+
+            wrapper.appendChild(img);
+            this.slider.appendChild(wrapper);
+        }
+
+        this.counter.textContent = `Trang 1 / ${this.TOTAL_PAGES}`;
+        this.isRendered = true; // Đánh dấu đã render để lần sau mở không phải load lại
+    }
+};
+
+// Khởi tạo sau khi DOM load xong
+document.addEventListener('DOMContentLoaded', () => {
+    NutriBookTracker.init();
+});

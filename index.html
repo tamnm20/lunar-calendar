@@ -479,8 +479,22 @@
                 <div id="preg-nutrition-content" class="bg-white p-4 rounded-xl shadow-sm border border-green-100 text-gray-700 space-y-2 leading-relaxed">
                     Đang tải dữ liệu từ Google Sheets...
                 </div>
+                <button id="btn-open-nutri-book" class="w-full mt-4 py-3 bg-gradient-to-r from-green-500 to-teal-500 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex justify-center items-center gap-2 active:scale-95">
+                    📖 Mở Cẩm Nang Dinh Dưỡng Thai Kỳ
+                </button>
             </div>
         </main>
+    </div>
+    <div id="nutri-gallery-modal" class="fixed inset-0 z-[70] bg-black hidden flex-col transition-opacity duration-300 opacity-0">
+        <div class="flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent absolute top-0 w-full z-10 text-white">
+            <span class="font-medium text-sm bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm" id="nutri-page-counter">Trang 1 / ?</span>
+            <button id="btn-close-nutri-book" class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md hover:bg-white/40 transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <div id="nutri-slider" class="flex-1 w-full h-full overflow-x-auto flex snap-x snap-mandatory hide-scrollbar items-center">
+            </div>
     </div>
 </body>
 </html>

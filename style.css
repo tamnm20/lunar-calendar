@@ -64,3 +64,11 @@ select {
     background-position: right 0.5rem center;
     background-size: 1.5em;
 }
+/* Ẩn thanh cuộn cho slider vuốt ảnh */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
